@@ -1,0 +1,88 @@
+[project]
+name = "fastapi-assets"
+version = "0.1.0"
+description = "FastAPI Assets - A validation and assertion toolkit for FastAPI file uploads and request metadata."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+dependencies = [
+    "fastapi>=0.119.1",
+]
+
+[project.optional-dependencies]
+pandas = [
+    "pandas>=2.3.3",
+]
+image = [
+    "pillow>=12.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.22",
+    "mkdocstrings[python]>=0.30.1",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "ruff>=0.14.1",
+]
+
+
+# Pytest Configuration
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "--maxfail=1 --disable-warnings"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests",
+]
+
+# Ruff Configuration (Linting + Formatting)
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["build", "dist", ".venv", "docs"]
+
+# Enable selected rule categories (see: https://docs.astral.sh/ruff/rules/)
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "B",  # bugbear
+    "I",  # import sorting
+    "UP", # pyupgrade
+    "C4", # comprehensions
+    "RUF",# ruff-specific
+]
+ignore = [
+    "E501",  # Ignore line-length errors (handled by formatter)
+]
+
+# Auto-formatting style (compatible with Black)
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+
+# Import sorting behavior
+[tool.ruff.lint.isort]
+known-first-party = ["fastapi_assets"]
+combine-as-imports = true
+
+
+# Mypy Configuration (Static Type Checking)
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_any_unimported = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+strict_optional = true
+ignore_missing_imports = true
