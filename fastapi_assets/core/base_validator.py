@@ -7,7 +7,7 @@ from fastapi_assets.core.exceptions import ValidationError
 
 
 class BaseValidator(abc.ABC):
-    """
+    r"""
     Abstract base class for creating reusable FastAPI validation dependencies.
 
     This class provides a standardized `__init__` for handling custom error
@@ -15,6 +15,28 @@ class BaseValidator(abc.ABC):
     `_raise_error`, for subclasses to raise consistent `HTTPException`s.
 
     Subclasses MUST implement the `__call__` method.
+
+    .. code-block:: python
+        from fastapi import Header
+        from fastapi_assets.core.base_validator import BaseValidator, ValidationError
+        class MyValidator(BaseValidator):
+            def _validate_logic(self, token: str) -> None:
+                # This method is testable without FastAPI
+                if not token.startswith("sk_"):
+                    # Raise the logic-level exception
+                    raise ValidationError(detail="Token must start with 'sk_'.")
+            def __call__(self, x_token: str = Header(...)):
+                try:
+                    # 1. Run the pure validation logic
+                    self._validate_logic(x_token)
+                except ValidationError as e:
+                    # 2. Catch logic error and raise HTTP error
+                    self._raise_error(
+                        detail=e.detail, # Pass specific detail
+                        status_code=e.status_code # Pass specific code
+                    )
+                # 3. Return the valid value
+                return x_token
     """
 
     def __init__(
@@ -38,7 +60,7 @@ class BaseValidator(abc.ABC):
 
     def _raise_error(
         self,
-        value: Any,
+        value: Optional[Any] = None,
         status_code: Optional[int] = None,
         detail: Optional[Union[str, Callable[[Any], str]]] = None,
     ) -> None:
@@ -48,11 +70,11 @@ class BaseValidator(abc.ABC):
         It automatically resolves callable error details.
 
         Args:
-            value: The value that failed validation. This is passed
+            value (Optional[Any]): The value that failed validation. This is passed
                 to the error_detail callable, if it is one.
-            status_code: A specific status code for this failure,
+            status_code (Optional[int]): A specific status code for this failure,
                 overriding the instance's default status_code.
-            detail: A specific error detail for this failure,
+            detail (Optional[Union[str, Callable[[Any], str]]]): A specific error detail for this failure,
                 overriding the instance's default error_detail.
         """
         final_status_code = status_code if status_code is not None else self._status_code
