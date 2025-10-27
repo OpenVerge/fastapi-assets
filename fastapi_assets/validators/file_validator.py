@@ -31,7 +31,7 @@ class FileValidator(BaseValidator):
     MIME type, and filename.
 
     .. code-block:: python
-        from fastapi import FastAPI, UploadFile
+        from fastapi import FastAPI, UploadFile, Depends
         from fastapi_assets.validators.file_validator import FileValidator
 
         app = FastAPI()
@@ -47,7 +47,7 @@ class FileValidator(BaseValidator):
         )
 
         @app.post("/upload/")
-        async def upload_file(file: UploadFile = file_validator):
+        async def upload_file(file: UploadFile = Depends(file_validator)):
             return {"filename": file.filename}
     """
 
