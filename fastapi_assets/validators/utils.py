@@ -1,4 +1,5 @@
 """Utility functions for file validation in FastAPI Assets."""
+
 from typing import TYPE_CHECKING, List, Optional, Union
 import re
 import fnmatch
