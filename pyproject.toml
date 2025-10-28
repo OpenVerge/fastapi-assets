@@ -5,25 +5,11 @@ description = "FastAPI Assets - A validation and assertion toolkit for FastAPI f
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "MIT" }
-dependencies = [
-    "fastapi>=0.119.1",
-]
+dependencies = ["fastapi>=0.119.1"]
 
 [project.optional-dependencies]
-pandas = [
-    "pandas>=2.3.3",
-]
-image = [
-    "pillow>=12.0.0",
-]
-
-[tool.setuptools]
-packages = ["fastapi_assets"]
-
-[tool.setuptools.package-data]
-"fastapi_assets" = ["py.typed"]
-
-[dependency-groups]
+pandas = ["pandas>=2.3.3"]
+image = ["pillow>=12.0.0"]
 dev = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.6.22",
@@ -33,6 +19,13 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "ruff>=0.14.1",
 ]
+optional = ["fastapi-assets[pandas,image]"]
+
+[tool.setuptools]
+packages = ["fastapi_assets"]
+
+[tool.setuptools.package-data]
+"fastapi_assets" = ["py.typed"]
 
 
 # Pytest Configuration
