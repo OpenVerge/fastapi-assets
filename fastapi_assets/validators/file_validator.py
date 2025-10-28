@@ -64,6 +64,7 @@ class FileValidator(BaseValidator):
         on_size_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         on_type_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         on_filename_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
+        **kwargs: Any,
     ):
         """
         Initializes the FileValidator.
@@ -76,10 +77,13 @@ class FileValidator(BaseValidator):
             on_size_error_detail: Custom error message for size validation failures.
             on_type_error_detail: Custom error message for content-type failures.
             on_filename_error_detail: Custom error message for filename pattern failures.
+            **kwargs: Additional arguments for the BaseValidator.
         """
         # Call super() with a generic default, which will be overridden
         # by the specific error handlers.
-        super().__init__(status_code=400, error_detail="File validation failed.")
+        kwargs["error_detail"] = kwargs.get("error_detail", "File validation failed.")
+        kwargs["status_code"] = 400
+        super().__init__(**kwargs)
 
         # Parse sizes once
         self._max_size = (
