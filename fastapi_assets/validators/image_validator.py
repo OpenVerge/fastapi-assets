@@ -8,17 +8,13 @@ from fastapi import File, UploadFile
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from fastapi_assets.validators.file_validator import FileValidator
 
+PIL = True
 # Pillow Dependency Handling
 try:
     # Pillow is required for ImageValidator
     from PIL import Image, UnidentifiedImageError
 except ImportError:
-    # Raise a clear, actionable error if Pillow is not installed
-    raise ImportError(
-        "Pillow is not installed. "
-        "Please run 'pip install fastapi-assets[image]' to use ImageValidator."
-    )
-
+    PIL = None
 # ImageValidator Implementation
 
 _DEFAULT_IMAGE_CONTENT_TYPES = [
@@ -94,7 +90,12 @@ class ImageValidator(FileValidator):
             on_aspect_ratio_error_detail: Custom error for aspect ratio failures.
             **kwargs: Catches all parent arguments.
         """
-
+        if not PIL:
+            raise ImportError(
+                "The 'Pillow' library is required for ImageValidator. "
+                "Install it with 'pip install fastapi-assets[image]'"
+            )
+        
         # Set default image content types if not overridden
         if "content_types" not in kwargs:
             kwargs["content_types"] = _DEFAULT_IMAGE_CONTENT_TYPES
