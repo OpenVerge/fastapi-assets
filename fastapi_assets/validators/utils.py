@@ -80,7 +80,11 @@ async def _get_streamed_size(self: "FileValidator", file: UploadFile, size_units
         ValidationError: If the file exceeds max_size during streaming.
     """
     actual_size = 0
-    async for chunk in file.chunks(self._DEFAULT_CHUNK_SIZE):  # type: ignore[attr-defined]
+    chunk_size = self._DEFAULT_CHUNK_SIZE
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
         actual_size += len(chunk)
 
         if self._max_size is not None and actual_size > self._max_size:
