@@ -12,12 +12,10 @@ from fastapi_assets.validators.file_validator import FileValidator
 try:
     # Pillow is required for ImageValidator
     from PIL import Image, UnidentifiedImageError
+
+    PIL = True
 except ImportError:
-    # Raise a clear, actionable error if Pillow is not installed
-    raise ImportError(
-        "Pillow is not installed. "
-        "Please run 'pip install fastapi-assets[image]' to use ImageValidator."
-    )
+    PIL = None  # type: ignore
 
 # ImageValidator Implementation
 
@@ -94,6 +92,11 @@ class ImageValidator(FileValidator):
             on_aspect_ratio_error_detail: Custom error for aspect ratio failures.
             **kwargs: Catches all parent arguments.
         """
+        if not PIL:
+            raise ImportError(
+                "The 'Pillow' library is required for ImageValidator. "
+                "Install it with 'pip install fastapi-assets[image]'"
+            )
 
         # Set default image content types if not overridden
         if "content_types" not in kwargs:
