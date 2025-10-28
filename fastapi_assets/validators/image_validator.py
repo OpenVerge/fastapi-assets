@@ -12,6 +12,7 @@ from fastapi_assets.validators.file_validator import FileValidator
 try:
     # Pillow is required for ImageValidator
     from PIL import Image, UnidentifiedImageError
+
     PIL = True
 except ImportError:
     PIL = None  # type: ignore
@@ -96,7 +97,7 @@ class ImageValidator(FileValidator):
                 "The 'Pillow' library is required for ImageValidator. "
                 "Install it with 'pip install fastapi-assets[image]'"
             )
-        
+
         # Set default image content types if not overridden
         if "content_types" not in kwargs:
             kwargs["content_types"] = _DEFAULT_IMAGE_CONTENT_TYPES
