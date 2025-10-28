@@ -1,4 +1,5 @@
 """Module providing the FileValidator for validating uploaded files in FastAPI."""
+
 import re
 from typing import Any, Callable, List, Optional, Union
 from fastapi_assets.core.base_validator import BaseValidator, ValidationError
