@@ -8,13 +8,14 @@ from fastapi import File, UploadFile
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from fastapi_assets.validators.file_validator import FileValidator
 
-PIL = True
 # Pillow Dependency Handling
 try:
     # Pillow is required for ImageValidator
     from PIL import Image, UnidentifiedImageError
+    PIL = True
 except ImportError:
-    PIL = None
+    PIL = None  # type: ignore
+
 # ImageValidator Implementation
 
 _DEFAULT_IMAGE_CONTENT_TYPES = [
