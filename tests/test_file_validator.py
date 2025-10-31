@@ -26,19 +26,13 @@ def mock_upload_file() -> MagicMock:
     file.size = 1024  # 1KB
 
     # Default streaming mock (1024 bytes total)
-    file.read.side_effect = [
-        b"a" * 512,
-        b"b" * 512,
-        b"",  # End of file marker
-    ]
-
-    # Mock the chunks() async generator
-    async def mock_chunks(size: int):
-        """Mock async generator for chunks"""
-        yield b"a" * 512
-        yield b"b" * 512
-
-    file.chunks = mock_chunks
+    file.read = AsyncMock(
+        side_effect=[
+            b"a" * 512,
+            b"b" * 512,
+            b"",  # End of file marker
+        ]
+    )
 
     return file
 
@@ -172,13 +166,15 @@ class TestFileValidatorCall:
         # Mock file.size = None
         mock_upload_file.size = None
 
-        # Mock chunks to return 1500 bytes total
-        async def mock_chunks_too_large(size: int):
-            """Mock async generator that yields too much data"""
-            yield b"a" * 1000
-            yield b"b" * 500
-
-        mock_upload_file.chunks = mock_chunks_too_large
+        # Mock read to return too much data (1500 bytes total)
+        # _DEFAULT_CHUNK_SIZE is 8192, so we return that plus more to exceed 1KB
+        mock_upload_file.read = AsyncMock(
+            side_effect=[
+                b"a" * 1024,  # First chunk: 1024 bytes (already exceeds 1KB limit)
+                b"b" * 500,  # This won't be read because we'll fail on first chunk
+                b"",  # End of file
+            ]
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await validator(mock_upload_file)

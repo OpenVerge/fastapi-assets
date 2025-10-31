@@ -1,4 +1,5 @@
 """Module providing the FileValidator for validating uploaded files in FastAPI."""
+
 import re
 from typing import Any, Callable, List, Optional, Union
 from fastapi_assets.core.base_validator import BaseValidator, ValidationError
@@ -31,7 +32,7 @@ class FileValidator(BaseValidator):
     MIME type, and filename.
 
     .. code-block:: python
-        from fastapi import FastAPI, UploadFile
+        from fastapi import FastAPI, UploadFile, Depends
         from fastapi_assets.validators.file_validator import FileValidator
 
         app = FastAPI()
@@ -47,7 +48,7 @@ class FileValidator(BaseValidator):
         )
 
         @app.post("/upload/")
-        async def upload_file(file: UploadFile = file_validator):
+        async def upload_file(file: UploadFile = Depends(file_validator)):
             return {"filename": file.filename}
     """
 
@@ -63,6 +64,7 @@ class FileValidator(BaseValidator):
         on_size_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         on_type_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         on_filename_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
+        **kwargs: Any,
     ):
         """
         Initializes the FileValidator.
@@ -75,10 +77,13 @@ class FileValidator(BaseValidator):
             on_size_error_detail: Custom error message for size validation failures.
             on_type_error_detail: Custom error message for content-type failures.
             on_filename_error_detail: Custom error message for filename pattern failures.
+            **kwargs: Additional arguments for the BaseValidator.
         """
         # Call super() with a generic default, which will be overridden
         # by the specific error handlers.
-        super().__init__(status_code=400, error_detail="File validation failed.")
+        kwargs["error_detail"] = kwargs.get("error_detail", "File validation failed.")
+        kwargs["status_code"] = 400
+        super().__init__(**kwargs)
 
         # Parse sizes once
         self._max_size = (
