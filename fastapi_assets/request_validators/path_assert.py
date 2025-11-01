@@ -60,8 +60,8 @@ class PathValidator(BaseValidator):
         description: Optional[str] = None,
         alias: Optional[str] = None,
         deprecated: Optional[bool] = None,
-        **path_kwargs
-    ):
+        **path_kwargs : Any
+    ) -> None:
         """
         Initializes the PathValidator.
 
@@ -132,7 +132,7 @@ class PathValidator(BaseValidator):
         # This happens because FastAPI handles the Path() dependency internally
         if value is None:
             # Return a dependency that FastAPI will use
-            async def dependency(param_value: Any = self._path_param):
+            async def dependency(param_value: Any = self._path_param) -> Any:
                 return self._validate(param_value)
             return dependency
 
