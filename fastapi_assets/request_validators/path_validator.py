@@ -14,7 +14,7 @@ class PathValidator(BaseValidator):
 
     .. code-block:: python
         from fastapi import FastAPI
-        from fastapi_assets.validators.path_validator import PathValidator
+        from fastapi_assets.path_validator import PathValidator
 
         app = FastAPI()
 

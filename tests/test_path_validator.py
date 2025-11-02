@@ -4,7 +4,7 @@ tests for the PathValidator class.
 from fastapi import HTTPException
 import pytest
 from fastapi_assets.core.base_validator import ValidationError
-from fastapi_assets.request_validators.path_assert import PathValidator
+from fastapi_assets.request_validators.path_validator import PathValidator
 
 # Fixtures for common PathValidator configurations
 @pytest.fixture
