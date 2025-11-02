@@ -14,7 +14,7 @@ class PathValidator(BaseValidator):
 
     .. code-block:: python
         from fastapi import FastAPI
-        from fastapi_assets.validators.path_validator import PathValidator
+        from fastapi_assets.path_validator import PathValidator
 
         app = FastAPI()
 
@@ -161,7 +161,6 @@ class PathValidator(BaseValidator):
         except ValidationError as e:
             # Convert ValidationError to HTTPException
             self._raise_error(
-                value=value,
                 status_code=e.status_code,
                 detail=str(e.detail)
             )
