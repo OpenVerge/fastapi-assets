@@ -80,7 +80,7 @@ class TestPathValidatorInit:
         custom_error = "Invalid path parameter"
         validator = PathValidator(on_error_detail=custom_error)
         # _error_detail attribute holds error message
-        assert validator._error_detail == custom_error or custom_error in str(validator.__dict__)
+        assert validator.error_detail == custom_error or custom_error in str(validator.__dict__)
 
     def test_init_custom_validator_function(self):
         """Tests that custom validator function is stored."""
