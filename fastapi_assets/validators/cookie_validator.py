@@ -1,209 +1,215 @@
 """
-Module providing the CookieAssert class for validating cookie parameters in FastAPI.
+fastapi-asserts: Cookie Validation Module
+========================================
+
+This module provides the `CookieAssert` class, a robust, class-based
+dependency for validating FastAPI Cookies with granular error control.
+
+It allows developers to define specific validation rules and error messages
+for each cookie, enhancing security and user experience.
+
+Classes:
+    - ValidationError: Custom exception raised on a validation failure.
+    - BaseValidator: Abstract base class for creating validation dependencies.
+    - CookieAssert: The main class-based dependency for cookie validation.
+
+Globals:
+    - PRE_BUILT_PATTERNS: A dictionary of common regex patterns.
 """
 
 import re
-from typing import Any, Callable, Dict, Optional, Pattern
+from typing import Any, Callable, Dict, Optional
+from fastapi import Request, HTTPException, status
 
-from fastapi import HTTPException, Request, status
-from fastapi_assets.core.base_validator import (  # Assuming this path from your structure
-    BaseValidator,
-    ValidationError,
-)
+# ---
+# START: Core Library Code
+# ---
 
-# --- Pre-built Regex Patterns ---
+class ValidationError(Exception):
+    """Custom exception raised when a validation check fails.
+    
+    This exception is used internally by the validator class and is
+    caught by the `__call__` method to be converted into a standard
+    FastAPI `HTTPException`.
+    """
+    def __init__(self, detail: str, status_code: int):
+        """
+        Args:
+            detail (str): The error message detail.
+            status_code (int): The HTTP status code for this failure.
+        """
+        self.detail = detail
+        self.status_code = status_code
+        super().__init__(detail)
 
-# Regex patterns for common formats, accessible via the 'format' parameter.
+class BaseValidator:
+    """
+    Abstract base class for creating validation dependencies.
+    
+    Provides a standardized way to raise `HTTPException`s.
+    """
+    def __init__(self, *, status_code: int, error_detail: str):
+        """
+        Args:
+            status_code (int): The default HTTP status code for this validator.
+            error_detail (str): The default error message for this validator.
+        """
+        self._status_code = status_code
+        self._error_detail = error_detail
+
+    def _raise_error(self, detail: str, status_code: Optional[int] = None) -> None:
+        """
+        Raises the standard HTTPException for this validator.
+        
+        Args:
+            detail (str): The specific error message to return.
+            status_code (Optional[int]): An optional status code to override
+                                         the default.
+
+        Raises:
+            HTTPException: A standard FastAPI HTTPException.
+        """
+        raise HTTPException(
+            status_code=status_code or self._status_code,
+            detail=detail or self._error_detail,
+        )
+
+# Pre-built regex patterns for the `format` parameter
 PRE_BUILT_PATTERNS: Dict[str, str] = {
-    # 3 parts, Base64-URL encoded, separated by dots.
-    "jwt": r"^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+/=]*$",
-    # Standard UUIDv4. Note the '4' in the third group.
+    "session_id": r"^[A-Za-z0-9_-]{16,128}$",
     "uuid4": r"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$",
-    # Basic email pattern.
-    "email": r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
-    # Bearer token format.
     "bearer_token": r"^[Bb]earer [A-Za-z0-9\._~\+\/=-]+$",
-    # ISO 8601 Datetime format (e.g., 2025-11-01T15:30:00Z).
-    "datetime": r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
-    # A common format for simple session IDs.
-    "session_id": r"^[A-Za-z0-9-_]{16,128}$",
+    "email": r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+    "datetime": r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|([+-]\d{2}:\d{2}))?$",
 }
-
-
-# --- Validator Class ---
-
 
 class CookieAssert(BaseValidator):
     """
-    A class-based dependency for validating cookies in FastAPI.
-
-    This class enhances FastAPI's built-in `Cookie()` by providing granular,
-    per-rule error messages and convenient pre-built validation formats.
-
-    It is designed to be instantiated as a dependency that is injected
-    into your path operation functions.
-
-    Raises:
-        ValueError: On __init__ if configuration is invalid (e.g.,
-                    using 'format' and 'regex' simultaneously).
-        HTTPException: On __call__ if any validation rule fails.
+    A class-based dependency to validate FastAPI Cookies with granular control.
+    
+    This class is instantiated as a re-usable dependency that can be
+    injected into FastAPI endpoints using `Depends()`. It provides fine-grained
+    validation rules and specific error messages for each rule.
 
     Example:
         ```python
-        from fastapi import FastAPI
-        from fastapi_assets.validators.cookie_validator import CookieAssert
-
+        from fastapi import FastAPI, Depends
+        
         app = FastAPI()
-
-        # Define a reusable validator for a required session ID
+        
         validate_session = CookieAssert(
-            alias="session-id",
-            required=True,
+            alias="session-id", 
             format="uuid4",
-            on_required_error_detail="Session cookie is missing.",
-            on_pattern_error_detail="Invalid session ID format."
+            on_required_error_detail="Invalid or missing session ID.",
+            on_pattern_error_detail="Session ID must be a valid UUIDv4."
         )
-
-        @app.get("/user/me")
-        async def get_user_me(session: str = Depends(validate_session)):
-            # This code only runs if the cookie is present and valid
-            return {"session_id": session}
+        
+        @app.get("/items/")
+        async def read_items(session_id: str = Depends(validate_session)):
+            return {"session_id": session_id}
         ```
     """
-
     def __init__(
         self,
         *,
+        # --- Core Parameters ---
         alias: str,
         default: Any = ...,
-        required: Optional[bool] = None,
-        # Numeric validation
+        required: bool = True,
+
+        # --- Validation Rules ---
         gt: Optional[float] = None,
         ge: Optional[float] = None,
         lt: Optional[float] = None,
         le: Optional[float] = None,
-        # Length validation
         min_length: Optional[int] = None,
         max_length: Optional[int] = None,
-        # Pattern validation
         regex: Optional[str] = None,
+        pattern: Optional[str] = None,
         format: Optional[str] = None,
-        # Custom validation
         validator: Optional[Callable[[Any], bool]] = None,
-        # Error messages
-        on_required_error_detail: Optional[str] = None,
-        on_numeric_error_detail: Optional[str] = None,
-        on_comparison_error_detail: Optional[str] = None,
-        on_length_error_detail: Optional[str] = None,
-        on_pattern_error_detail: Optional[str] = None,
-        on_validator_error_detail: Optional[str] = None,
+
+        # --- Granular Error Messages ---
+        on_required_error_detail: Optional[str] = "Cookie is required.",
+        on_numeric_error_detail: Optional[str] = "Cookie value must be a number.",
+        on_comparison_error_detail: Optional[str] = "Cookie value fails comparison rules.",
+        on_length_error_detail: Optional[str] = "Cookie value fails length constraints.",
+        on_pattern_error_detail: Optional[str] = "Cookie has an invalid format.",
+        on_validator_error_detail: Optional[str] = "Cookie failed custom validation.",
+
+        # --- Base Error ---
+        status_code: int = status.HTTP_400_BAD_REQUEST,
+        error_detail: Optional[str] = "Cookie validation failed.",
     ):
         """
         Initializes the CookieAssert validator.
 
         Args:
-            alias (str): The exact name (key) of the cookie. This is required.
-            default (Any, optional): The default value if the cookie is not
-                present. If '...' (Ellipsis), the cookie is required.
-            required (Optional[bool], optional): Explicitly mark the cookie as
-                required (True) or not (False). Overrides 'default'.
-            gt (Optional[float], optional): Value must be "greater than".
-            ge (Optional[float], optional): Value must be "greater than or equal to".
-            lt (Optional[float], optional): Value must be "less than".
-            le (Optional[float], optional): Value must be "less than or equal to".
-            min_length (Optional[int], optional): String must be at least this long.
-            max_length (Optional[int], optional): String must be at most this long.
-            regex (Optional[str], optional): A custom regex pattern to match.
-            format (Optional[str], optional): Name of a pre-built regex
-                pattern (e.g., "uuid4", "email").
-            validator (Optional[Callable[[Any], bool]], optional): A custom
-                function that receives the value and returns True if valid.
-            on_required_error_detail (Optional[str], optional): Custom error
-                message if a required cookie is missing.
-            on_numeric_error_detail (Optional[str], optional): Custom error
-                message if the value is not a valid number.
-            on_comparison_error_detail (Optional[str], optional): Custom error
-                message if numeric comparisons (gt, lt) fail.
-            on_length_error_detail (Optional[str], optional): Custom error
-                message if length validation (min_length, max_length) fails.
-            on_pattern_error_detail (Optional[str], optional): Custom error
-                message if regex/format validation fails.
-            on_validator_error_detail (Optional[str], optional): Custom error
-                message if the custom 'validator' function fails.
+            alias (str): (Required) The exact, case-sensitive name of the
+                         cookie (e.g., "session-id").
+            default (Any): The default value to return if the cookie is not
+                           present. If not set, `required` defaults to `True`.
+            required (bool): Explicitly set to `True` or `False`. Overrides
+                             `default` for determining if a cookie is required.
+            gt (Optional[float]): "Greater than" numeric comparison.
+            ge (Optional[float]): "Greater than or equal to" numeric comparison.
+            lt (Optional[float]): "Less than" numeric comparison.
+            le (Optional[float]): "Less than or equal to" numeric comparison.
+            min_length (Optional[int]): Minimum string length.
+            max_length (Optional[int]): Maximum string length.
+            regex (Optional[str]): Custom regex pattern.
+            pattern (Optional[str]): Alias for `regex`.
+            format (Optional[str]): A key from `PRE_BUILT_PATTERNS` (e.g., "uuid4").
+            validator (Optional[Callable]): A custom validation function.
+            on_required_error_detail (Optional[str]): Error for missing required cookie.
+            on_numeric_error_detail (Optional[str]): Error for float conversion failure.
+            on_comparison_error_detail (Optional[str]): Error for gt/ge/lt/le failure.
+            on_length_error_detail (Optional[str]): Error for min/max length failure.
+            on_pattern_error_detail (Optional[str]): Error for regex/format failure.
+            on_validator_error_detail (Optional[str]): Error for custom validator failure.
+            status_code (int): The default HTTP status code to raise on failure.
+            error_detail (Optional[str]): A generic fallback error message.
+            
+        Raises:
+            ValueError: If `regex`/`pattern` and `format` are used simultaneously.
+            ValueError: If an unknown `format` key is provided.
         """
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            error_detail="Cookie validation failed.",
-        )
+        super().__init__(status_code=status_code, error_detail=error_detail)
 
-        # Store required params
+        # --- Store Core Parameters ---
         self.alias = alias
         self.default = default
+        # If 'default' is not set, 'required' must be True.
+        self.is_required = required if default is ... else (default is None and required)
 
-        # Determine if the cookie is required
-        if required is True:
-            self.is_required = True
-        elif required is False:
-            self.is_required = False
-        else:
-            # If 'required' is not set, infer from 'default'
-            self.is_required = default is ...
-
-        # Store numeric validation rules
-        self.gt = gt
-        self.ge = ge
-        self.lt = lt
-        self.le = le
-
-        # Store length validation rules
-        self.min_length = min_length
-        self.max_length = max_length
-
-        # Store custom validator
+        # --- Store Validation Rules ---
+        self.gt, self.ge, self.lt, self.le = gt, ge, lt, le
+        self.min_length, self.max_length = min_length, max_length
         self.custom_validator = validator
 
-        # Store specific error details
-        self.err_required = (
-            on_required_error_detail or "Cookie is required."
-        )
-        self.err_numeric = (
-            on_numeric_error_detail or "Cookie value must be a valid number."
-        )
-        self.err_comparison = (
-            on_comparison_error_detail or "Cookie value is not in the allowed range."
-        )
-        self.err_length = (
-            on_length_error_detail or "Cookie value has an invalid length."
-        )
-        self.err_pattern = (
-            on_pattern_error_detail or "Cookie value has an invalid format."
-        )
-        self.err_validator = (
-            on_validator_error_detail or "Cookie failed custom validation."
-        )
+        # --- Store Error Messages ---
+        self.err_required = on_required_error_detail
+        self.err_numeric = on_numeric_error_detail
+        self.err_compare = on_comparison_error_detail
+        self.err_length = on_length_error_detail
+        self.err_pattern = on_pattern_error_detail
+        self.err_validator = on_validator_error_detail
 
-        # --- Compile Regex ---
-        if format and regex:
-            raise ValueError("Cannot use 'format' and 'regex' simultaneously.")
-
-        self.final_regex: Optional[Pattern] = None
-        self.final_regex_str = regex or PRE_BUILT_PATTERNS.get(format)
-
-        if self.final_regex_str:
-            if (
-                format
-                and format not in PRE_BUILT_PATTERNS
-            ):
-                raise ValueError(
-                    f"Unknown format '{format}'. Available formats: "
-                    f"{list(PRE_BUILT_PATTERNS.keys())}"
-                )
-            self.final_regex = re.compile(self.final_regex_str)
+        # --- Handle Regex/Pattern ---
+        self.final_regex_str = regex or pattern
+        if self.final_regex_str and format:
+            raise ValueError("Cannot use 'regex'/'pattern' and 'format' simultaneously.")
+        if format:
+            if format not in PRE_BUILT_PATTERNS:
+                raise ValueError(f"Unknown format: '{format}'. Available: {list(PRE_BUILT_PATTERNS.keys())}")
+            self.final_regex_str = PRE_BUILT_PATTERNS[format]
+        
+        self.final_regex = re.compile(self.final_regex_str) if self.final_regex_str else None
 
     async def __call__(self, request: Request) -> Optional[Any]:
         """
         FastAPI dependency entry point.
-
+        
         This method is called by FastAPI's dependency injection system.
         It retrieves the cookie from the request and runs all validation logic.
 
@@ -220,20 +226,19 @@ class CookieAssert(BaseValidator):
                            Returns `None` or the `default` value if not required
                            and not present.
         """
+        if not self.alias:
+            self._raise_error(
+                "Internal Server Error: `CookieAssert` must be initialized with an `alias`.",
+                status_code=500
+            )
+
+        cookie_value = request.cookies.get(self.alias)
+
         try:
-            # 0. Check for misconfiguration
-            if not self.alias:
-                raise ValidationError(
-                    detail="Internal Server Error: `CookieAssert` must be initialized with an `alias`.",
-                    status_code=500,
-                )
-
-            cookie_value = request.cookies.get(self.alias)
-
             # 1. Check for required
             if cookie_value is None:
                 if self.is_required:
-                    raise ValidationError(detail=self.err_required, status_code=400)
+                    self._raise_error(detail=self.err_required)
                 # Not required and not present, return default
                 return self.default if self.default is not ... else None
 
@@ -241,46 +246,38 @@ class CookieAssert(BaseValidator):
             numeric_value = self._validate_numeric(cookie_value)
             if numeric_value is not None:
                 self._validate_comparison(numeric_value)
-
+            
             # 3. Check length (if rules exist)
             self._validate_length(cookie_value)
-
+            
             # 4. Check pattern (if rule exists)
             self._validate_pattern(cookie_value)
-
+            
             # 5. Check custom validator (if rule exists)
             self._validate_custom(cookie_value)
 
-            # All checks passed, return the validated value
-            return numeric_value if numeric_value is not None else cookie_value
-
         except ValidationError as e:
-            # This is our controlled validation error
-            self._raise_error(
-                value=cookie_value,
-                status_code=e.status_code,
-                detail=e.detail,
-            )
-        except HTTPException:
-            # Re-raise HTTPExceptions (e.g., from _raise_error) directly
-            raise
+            # Convert internal error to HTTPException
+            self._raise_error(status_code=e.status_code, detail=str(e.detail))
         except Exception as e:
-            # This is an unexpected server error
+            # Catch any other unexpected error during validation
             self._raise_error(
                 status_code=500,
                 detail=f"An unexpected error occurred during cookie validation: {e}",
             )
-
-    # --- Validation Helper Methods ---
+        
+        # All checks passed, return the value (or its numeric version if possible)
+        return numeric_value if numeric_value is not None else cookie_value
 
     def _validate_numeric(self, value: str) -> Optional[float]:
         """
-        Checks if value is numeric, if rules (gt, ge, lt, le) exist.
-
+        Tries to convert value to float. Returns float or None.
+        
+        This check is only triggered if gt, ge, lt, or le are set.
+        
         Raises:
-            ValidationError: If rules exist and value is not a valid number.
+            ValidationError: If conversion to float fails.
         """
-        # Only validate as a number if comparison rules are set
         if any(v is not None for v in [self.gt, self.ge, self.lt, self.le]):
             try:
                 return float(value)
@@ -290,26 +287,26 @@ class CookieAssert(BaseValidator):
 
     def _validate_comparison(self, value: float) -> None:
         """
-        Runs numeric comparison checks (gt, ge, lt, le).
-
+        Checks gt, ge, lt, le rules against a numeric value.
+        
         Raises:
             ValidationError: If any comparison fails.
         """
         if self.gt is not None and not value > self.gt:
-            raise ValidationError(detail=self.err_comparison, status_code=400)
+            raise ValidationError(detail=self.err_compare, status_code=400)
         if self.ge is not None and not value >= self.ge:
-            raise ValidationError(detail=self.err_comparison, status_code=400)
+            raise ValidationError(detail=self.err_compare, status_code=400)
         if self.lt is not None and not value < self.lt:
-            raise ValidationError(detail=self.err_comparison, status_code=400)
+            raise ValidationError(detail=self.err_compare, status_code=400)
         if self.le is not None and not value <= self.le:
-            raise ValidationError(detail=self.err_comparison, status_code=400)
+            raise ValidationError(detail=self.err_compare, status_code=400)
 
     def _validate_length(self, value: str) -> None:
         """
-        Runs string length checks (min_length, max_length).
-
+        Checks min_length and max_length rules.
+        
         Raises:
-            ValidationError: If length is outside the bounds.
+            ValidationError: If length constraints fail.
         """
         value_len = len(value)
         if self.min_length is not None and value_len < self.min_length:
@@ -319,10 +316,10 @@ class CookieAssert(BaseValidator):
 
     def _validate_pattern(self, value: str) -> None:
         """
-        Runs regex pattern matching.
-
+        Checks regex/format pattern rule.
+        
         Raises:
-            ValidationError: If the pattern does not match.
+            ValidationError: If the regex pattern does not match.
         """
         if self.final_regex and not self.final_regex.search(value):
             raise ValidationError(detail=self.err_pattern, status_code=400)
@@ -330,7 +327,7 @@ class CookieAssert(BaseValidator):
     def _validate_custom(self, value: str) -> None:
         """
         Runs the custom validator function.
-
+        
         Raises:
             ValidationError: If the function returns False or raises an Exception.
         """
@@ -338,12 +335,11 @@ class CookieAssert(BaseValidator):
             try:
                 if not self.custom_validator(value):
                     raise ValidationError(detail=self.err_validator, status_code=400)
-            except ValidationError:
-                # Re-raise our own validation errors
-                raise
             except Exception as e:
-                # Wrap any other exception
-                raise ValidationError(
-                    detail=f"{self.err_validator}: {e}", status_code=400
-                )
+                # Validator function raising an error is a validation failure
+                raise ValidationError(detail=f"{self.err_validator}: {e}", status_code=400)
+
+# ---
+# END: Core Library Code
+# ---
 
