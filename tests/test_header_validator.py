@@ -5,7 +5,7 @@ Tests for the HeaderValidator class.
 import pytest
 from fastapi import HTTPException
 from fastapi_assets.core.base_validator import ValidationError
-from fastapi_assets.validators.header_validator import HeaderValidator
+from fastapi_assets.request_validators.header_validator import HeaderValidator
 
 
 # --- Fixtures ---
