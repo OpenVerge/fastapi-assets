@@ -161,7 +161,6 @@ class PathValidator(BaseValidator):
         except ValidationError as e:
             # Convert ValidationError to HTTPException
             self._raise_error(
-                value=value,
                 status_code=e.status_code,
                 detail=str(e.detail)
             )
