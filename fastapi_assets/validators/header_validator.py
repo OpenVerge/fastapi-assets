@@ -1,6 +1,6 @@
 """HeaderValidator for validating HTTP headers in FastAPI."""
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Pattern
 from fastapi_assets.core.base_validator import BaseValidator, ValidationError
 from fastapi import Header
 
@@ -107,7 +107,7 @@ class HeaderValidator(BaseValidator):
         else:
             self._required = required
 
-        # Store validation rules
+        # Store validation rules     
         self._allowed_values = allowed_values
         self._custom_validator = validator
         
@@ -115,20 +115,23 @@ class HeaderValidator(BaseValidator):
         if pattern and format:
             raise ValueError("Cannot specify both 'pattern' and 'format'. Choose one.")
         
-        if format:
-            if format not in _FORMAT_PATTERNS:
-                raise ValueError(
-                    f"Unknown format '{format}'. "
-                    f"Available formats: {', '.join(_FORMAT_PATTERNS.keys())}"
-                )
+        self._pattern: Optional[Pattern[str]]
+        self._format_name: Optional[str]
+
+    if format:
+        if format not in _FORMAT_PATTERNS:
+            raise ValueError(
+                f"Unknown format '{format}'. "
+                f"Available formats: {', '.join(_FORMAT_PATTERNS.keys())}"
+            )
             self._pattern = re.compile(_FORMAT_PATTERNS[format], re.IGNORECASE)
             self._format_name = format
-        elif pattern:
-            self._pattern = re.compile(pattern)
-            self._format_name = None
-        else:
-            self._pattern = None
-            self._format_name = None
+    elif pattern:
+        self._pattern = re.compile(pattern)
+        self._format_name = None
+    else:
+        self._pattern = None
+        self._format_name = None
 
         # Store the underlying FastAPI Header parameter
         self._header_param = Header(
@@ -165,7 +168,7 @@ class HeaderValidator(BaseValidator):
         # If value is provided (for testing), validate directly
         return self._validate(header_value)
 
-    def _validate(self, value: Optional[str]) -> str:
+    def _validate(self, value: Optional[str]) -> Optional[str]:
         """
         Runs all validation checks on the header value.
 
@@ -211,7 +214,12 @@ class HeaderValidator(BaseValidator):
         """
         if self._required and (value is None or value == ""):
             detail = self._on_error_detail or "Required header is missing."
-            raise ValidationError(detail=detail, status_code=400)
+            if callable(detail):
+                detail_str = detail(value)
+            else:
+                detail_str = str(detail)
+
+            raise ValidationError(detail=detail_str, status_code=400)
 
     def _validate_allowed_values(self, value: str) -> None:
         """
