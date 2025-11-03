@@ -10,6 +10,7 @@ from fastapi_assets.request_validators.header_validator import HeaderValidator
 
 # --- Fixtures ---
 
+
 @pytest.fixture
 def base_validator():
     """Returns a basic HeaderValidator with no rules."""
@@ -43,13 +44,15 @@ def allowed_values_validator():
 @pytest.fixture
 def custom_validator_obj():
     """Returns a HeaderValidator with custom validator function."""
+
     def is_even_length(val: str) -> bool:
         return len(val) % 2 == 0
-    
+
     return HeaderValidator(validator=is_even_length)
 
 
 # --- Test Classes ---
+
 
 class TestHeaderValidatorInit:
     """Tests for the HeaderValidator's __init__ method."""
@@ -115,9 +118,10 @@ class TestHeaderValidatorInit:
 
     def test_init_custom_validator_function(self):
         """Tests that custom validator function is stored."""
+
         def is_positive(val: str) -> bool:
             return val.startswith("+")
-        
+
         validator = HeaderValidator(validator=is_positive)
         assert validator._custom_validator is not None
         assert validator._custom_validator("+test") is True
@@ -126,8 +130,8 @@ class TestHeaderValidatorInit:
     def test_init_custom_error_detail(self):
         """Tests that custom error detail is stored."""
         custom_msg = "Invalid header value"
-        validator = HeaderValidator(on_error_detail=custom_msg)
-        assert validator._on_error_detail == custom_msg
+        validator = HeaderValidator(error_detail=custom_msg)
+        assert validator._error_detail == custom_msg
 
     def test_init_alias(self):
         """Tests that alias for header name is set."""
@@ -149,7 +153,7 @@ class TestHeaderValidatorValidateRequired:
         """Tests required validation fails when value is None."""
         with pytest.raises(ValidationError) as e:
             required_validator._validate_required(None)
-        
+
         assert e.value.status_code == 400
         assert "missing" in e.value.detail.lower()
 
@@ -188,7 +192,7 @@ class TestHeaderValidatorValidateAllowedValues:
         """Tests invalid allowed value raises error."""
         with pytest.raises(ValidationError) as e:
             allowed_values_validator._validate_allowed_values("v4")
-        
+
         assert e.value.status_code == 400
         assert "not allowed" in e.value.detail.lower()
 
@@ -227,7 +231,7 @@ class TestHeaderValidatorValidatePattern:
         """Tests pattern fails on invalid value."""
         with pytest.raises(ValidationError) as e:
             pattern_validator._validate_pattern("short")
-        
+
         assert e.value.status_code == 400
         assert "does not match" in e.value.detail.lower()
 
@@ -245,7 +249,7 @@ class TestHeaderValidatorValidatePattern:
         validator = HeaderValidator(format="uuid4")
         with pytest.raises(ValidationError) as e:
             validator._validate_pattern("not-a-uuid")
-        
+
         assert "format" in e.value.detail.lower()
 
     def test_pattern_format_bearer_token_valid(self, format_validator):
@@ -304,16 +308,16 @@ class TestHeaderValidatorValidateCustom:
             or "custom validation error" in e.value.detail.lower()
         )
 
-
     def test_custom_validator_exception(self):
         """Tests custom validator exception is caught."""
+
         def buggy_validator(val: str) -> bool:
             raise ValueError("Unexpected error")
-        
+
         validator = HeaderValidator(validator=buggy_validator)
         with pytest.raises(ValidationError) as e:
             validator._validate_custom("test")
-        
+
         assert "custom validation error" in e.value.detail.lower()
 
 
@@ -323,9 +327,7 @@ class TestHeaderValidatorValidate:
     def test_validate_valid_header(self):
         """Tests full validation pipeline with valid header."""
         validator = HeaderValidator(
-            required=True,
-            allowed_values=["api", "web"],
-            pattern=r"^[a-z]+$"
+            required=True, allowed_values=["api", "web"], pattern=r"^[a-z]+$"
         )
         try:
             result = validator._validate("api")
@@ -353,9 +355,10 @@ class TestHeaderValidatorValidate:
 
     def test_validate_fails_custom(self):
         """Tests validation fails on custom validator."""
+
         def no_spaces(val: str) -> bool:
             return " " not in val
-        
+
         validator = HeaderValidator(validator=no_spaces)
         with pytest.raises(HTTPException):
             validator._validate("has space")
