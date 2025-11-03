@@ -167,11 +167,6 @@ class HeaderValidator(BaseValidator):
             return value or ""
         try:
             self._validate_required(value)
-            
-            # If value is None or empty and not required, return early
-            if value is None or value == "":
-                return value or ""
-            
             self._validate_allowed_values(value)
             self._validate_pattern(value)
             self._validate_custom(value)
@@ -179,7 +174,6 @@ class HeaderValidator(BaseValidator):
         except ValidationError as e:
             # Convert ValidationError to HTTPException
             self._raise_error(
-                value=value,
                 status_code=e.status_code,
                 detail=str(e.detail)
             )
