@@ -73,28 +73,10 @@ class HeaderValidator(BaseValidator):
         validator: Optional[Callable[[str], bool]] = None,
         required: Optional[bool] = None,
         on_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
-        # Standard Header() parameters
         title: Optional[str] = None,
         description: Optional[str] = None,
         **header_kwargs: Any
     ) -> None:
-        """
-        Initializes the HeaderValidator.
-
-        Args:
-            default: Default value for the header (use ... for required).
-            alias: The actual header name to look for (e.g., "X-API-Key").
-            convert_underscores: Whether to convert underscores to hyphens.
-            pattern: Regex pattern the header value must match.
-            format: Named format from predefined formats (uuid4, email, bearer_token, etc.).
-            allowed_values: List of allowed header values.
-            validator: Custom validation function that takes the value and returns bool.
-            required: Whether the header is required (default: True if no default).
-            on_error_detail: Custom error message for validation failures.
-            title: Title for API documentation.
-            description: Description for API documentation.
-            **header_kwargs: Additional arguments passed to FastAPI's Header().
-        """
         # Call super() with default error handling
         super().__init__(
             status_code=400,
@@ -107,31 +89,32 @@ class HeaderValidator(BaseValidator):
         else:
             self._required = required
 
-        # Store validation rules     
+        # Store validation rules
         self._allowed_values = allowed_values
         self._custom_validator = validator
-        
-        # Handle pattern and format
+
+        # Define type hints for attributes
+        self._pattern: Optional[Pattern[str]] = None
+        self._format_name: Optional[str] = None
+
+        # Handle pattern and format keys
         if pattern and format:
             raise ValueError("Cannot specify both 'pattern' and 'format'. Choose one.")
-        
-        self._pattern: Optional[Pattern[str]]
-        self._format_name: Optional[str]
 
-    if format:
-        if format not in _FORMAT_PATTERNS:
-            raise ValueError(
-                f"Unknown format '{format}'. "
-                f"Available formats: {', '.join(_FORMAT_PATTERNS.keys())}"
-            )
+        if format:
+            if format not in _FORMAT_PATTERNS:
+                raise ValueError(
+                    f"Unknown format '{format}'. "
+                    f"Available formats: {', '.join(_FORMAT_PATTERNS.keys())}"
+                )
             self._pattern = re.compile(_FORMAT_PATTERNS[format], re.IGNORECASE)
             self._format_name = format
-    elif pattern:
-        self._pattern = re.compile(pattern)
-        self._format_name = None
-    else:
-        self._pattern = None
-        self._format_name = None
+        elif pattern:
+            self._pattern = re.compile(pattern)
+            self._format_name = None
+        else:
+            self._pattern = None
+            self._format_name = None
 
         # Store the underlying FastAPI Header parameter
         self._header_param = Header(
@@ -143,9 +126,8 @@ class HeaderValidator(BaseValidator):
             **header_kwargs
         )
 
-        # Store error detail
+        # Store custom error detail
         self._on_error_detail = on_error_detail
-
     def __call__(self, header_value: Optional[str] = None) -> Any:
         """
         FastAPI dependency entry point for header validation.
