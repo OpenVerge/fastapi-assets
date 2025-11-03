@@ -163,10 +163,16 @@ class HeaderValidator(BaseValidator):
         Raises:
             HTTPException: If any validation check fails.
         """
+        try:
+            self._validate_required(value)
+        except ValidationError as e:
+            self._raise_error(
+                status_code=e.status_code,
+                detail=str(e.detail)
+        )
         if value is None or value == "":
             return value or ""
         try:
-            self._validate_required(value)
             self._validate_allowed_values(value)
             self._validate_pattern(value)
             self._validate_custom(value)
