@@ -167,9 +167,10 @@ class HeaderValidator(BaseValidator):
             self._validate_required(value)
         except ValidationError as e:
             self._raise_error(
+                value= value,
                 status_code=e.status_code,
                 detail=str(e.detail)
-        )
+            )
         if value is None or value == "":
             return value or ""
         try:
@@ -180,6 +181,7 @@ class HeaderValidator(BaseValidator):
         except ValidationError as e:
             # Convert ValidationError to HTTPException
             self._raise_error(
+                value= value,
                 status_code=e.status_code,
                 detail=str(e.detail)
             )
