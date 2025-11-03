@@ -1,8 +1,12 @@
 """HeaderValidator for validating HTTP headers in FastAPI."""
+
 import re
 from typing import Any, Callable, Dict, List, Optional, Union, Pattern
 from fastapi_assets.core.base_validator import BaseValidator, ValidationError
 from fastapi import Header
+from fastapi.param_functions import _Unset
+
+Undefined = _Unset
 
 
 # Predefined format patterns for common header validation use cases
@@ -25,7 +29,7 @@ class HeaderValidator(BaseValidator):
 
     .. code-block:: python
         from fastapi import FastAPI
-        from fastapi_assets.validators.header_validator import HeaderValidator
+        from fastapi_assets.request_validators.header_validator import HeaderValidator
 
         app = FastAPI()
 
@@ -63,31 +67,60 @@ class HeaderValidator(BaseValidator):
 
     def __init__(
         self,
-        default: Any = ...,
+        default: Any = Undefined,
         *,
+        required: Optional[bool] = True,
         alias: Optional[str] = None,
         convert_underscores: bool = True,
         pattern: Optional[str] = None,
         format: Optional[str] = None,
         allowed_values: Optional[List[str]] = None,
         validator: Optional[Callable[[str], bool]] = None,
-        required: Optional[bool] = None,
-        on_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        **header_kwargs: Any
+        **header_kwargs: Any,
     ) -> None:
-        # Call super() with default error handling
-        super().__init__(
-            status_code=400,
-            error_detail=on_error_detail or "Header validation failed."
-        )
+        """
+        Initializes the HeaderValidator instance.
 
-        # Determine if header is required
-        if required is None:
-            self._required = default is ...
-        else:
-            self._required = required
+        Args:
+            default (Any): The default value if the header is not provided.
+            required Optional[bool]: Explicitly set if the header is not required.
+            alias (Optional[str]): The alias of the header. This is the actual
+                header name (e.g., "X-API-Key").
+            convert_underscores (bool): If `True` (default), underscores in
+                the variable name will be converted to hyphens in the header name.
+            pattern (Optional[str]): A regex pattern string that the header
+                value must match.
+            format (Optional[str]): A predefined format name (e.g., "uuid4",
+                "email", "bearer_token") that the header value must match.
+                Cannot be used with `pattern`.
+            allowed_values (Optional[List[str]]): A list of exact string
+                values that are allowed for the header.
+            validator (Optional[Callable[[str], bool]]): A custom callable that
+                receives the header value and returns `True` if valid, or
+                `False` (or raises an Exception) if invalid.
+            title (Optional[str]): A title for the header in OpenAPI docs.
+            description (Optional[str]): A description for the header in
+                OpenAPI docs.
+            **header_kwargs (Any): Additional keyword arguments passed to the
+                parent `BaseValidator` (for error handling) and the
+                underlying `fastapi.Header` dependency.
+                Includes `status_code` (default 400) and `error_detail`
+                (default "Header Validation Failed") for error responses.
+
+        Raises:
+            ValueError: If both `pattern` and `format` are specified, or if
+                an unknown `format` name is provided.
+        """
+        header_kwargs["status_code"] = header_kwargs.get("status_code", 400)
+        header_kwargs["error_detail"] = header_kwargs.get(
+            "error_detail", "Header Validation Failed"
+        )
+        # Call super() with default error handling
+        super().__init__(**header_kwargs)
+
+        self._required = required
 
         # Store validation rules
         self._allowed_values = allowed_values
@@ -123,11 +156,9 @@ class HeaderValidator(BaseValidator):
             convert_underscores=convert_underscores,
             title=title,
             description=description,
-            **header_kwargs
+            **header_kwargs,
         )
 
-        # Store custom error detail
-        self._on_error_detail = on_error_detail
     def __call__(self, header_value: Optional[str] = None) -> Any:
         """
         FastAPI dependency entry point for header validation.
@@ -143,8 +174,10 @@ class HeaderValidator(BaseValidator):
         """
         # If value is None, return a dependency that FastAPI will use
         if header_value is None:
+
             def dependency(value: Optional[str] = self._header_param) -> Optional[str]:
                 return self._validate(value)
+
             return dependency
 
         # If value is provided (for testing), validate directly
@@ -166,25 +199,17 @@ class HeaderValidator(BaseValidator):
         try:
             self._validate_required(value)
         except ValidationError as e:
-            self._raise_error(
-                value= value,
-                status_code=e.status_code,
-                detail=str(e.detail)
-            )
+            self._raise_error(value=value, status_code=e.status_code, detail=str(e.detail))
         if value is None or value == "":
             return value or ""
         try:
             self._validate_allowed_values(value)
             self._validate_pattern(value)
             self._validate_custom(value)
-            
+
         except ValidationError as e:
             # Convert ValidationError to HTTPException
-            self._raise_error(
-                value= value,
-                status_code=e.status_code,
-                detail=str(e.detail)
-            )
+            self._raise_error(value=value, status_code=e.status_code, detail=str(e.detail))
 
         return value
 
@@ -199,7 +224,7 @@ class HeaderValidator(BaseValidator):
             ValidationError: If the header is required but missing.
         """
         if self._required and (value is None or value == ""):
-            detail = self._on_error_detail or "Required header is missing."
+            detail = "Required header is missing."
             if callable(detail):
                 detail_str = detail(value)
             else:
@@ -242,9 +267,7 @@ class HeaderValidator(BaseValidator):
 
         if not self._pattern.match(value):
             if self._format_name:
-                detail = (
-                    f"Header value does not match the required format: '{self._format_name}'"
-                )
+                detail = f"Header value does not match the required format: '{self._format_name}'"
             else:
                 detail = (
                     f"Header value '{value}' does not match the required pattern: "

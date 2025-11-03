@@ -1,7 +1,7 @@
 """Module providing the PathValidator for validating path parameters in FastAPI."""
 import re
 from typing import Any, Callable, List, Optional, Union
-from fastapi import Path
+from fastapi import Depends, Path
 from fastapi_assets.core.base_validator import BaseValidator, ValidationError
 
 
@@ -22,14 +22,14 @@ class PathValidator(BaseValidator):
         item_id_validator = PathValidator(
             gt=0,
             lt=1000,
-            on_error_detail="Item ID must be between 1 and 999"
+            error_detail="Item ID must be between 1 and 999"
         )
 
         username_validator = PathValidator(
             min_length=5,
             max_length=15,
             pattern=r"^[a-zA-Z0-9]+$",
-            on_error_detail="Username must be 5-15 alphanumeric characters"
+            error_detail="Username must be 5-15 alphanumeric characters"
         )
 
         @app.get("/items/{item_id}")
@@ -54,7 +54,6 @@ class PathValidator(BaseValidator):
         ge: Optional[Union[int, float]] = None,
         le: Optional[Union[int, float]] = None,
         validator: Optional[Callable[[Any], bool]] = None,
-        on_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         # Standard Path() parameters
         title: Optional[str] = None,
         description: Optional[str] = None,
@@ -76,19 +75,18 @@ class PathValidator(BaseValidator):
             ge: Value must be greater than or equal to this.
             le: Value must be less than or equal to this.
             validator: Custom validation function that takes the value and returns bool.
-            on_error_detail: Custom error message for validation failures.
             title: Title for API documentation.
             description: Description for API documentation.
             alias: Alternative parameter name.
             deprecated: Whether the parameter is deprecated.
             **path_kwargs: Additional arguments passed to FastAPI's Path().
         """
+        path_kwargs["error_detail"] = path_kwargs.get("error_detail", "Path parameter validation failed.")
+        path_kwargs["status_code"] = path_kwargs.get("status_code", 400)
         # Call super() with default error handling
         super().__init__(
-            status_code=400,
-            error_detail=on_error_detail or "Path parameter validation failed."
+            **path_kwargs
         )
-
         # Store validation rules
         self._allowed_values = allowed_values
         self._pattern = re.compile(pattern) if pattern else None
@@ -134,7 +132,7 @@ class PathValidator(BaseValidator):
             # Return a dependency that FastAPI will use
             async def dependency(param_value: Any = self._path_param) -> Any:
                 return self._validate(param_value)
-            return dependency
+            return Depends(dependency)
 
         # If value is provided (for testing), validate directly
         return self._validate(value)

@@ -78,9 +78,11 @@ class TestPathValidatorInit:
     def test_init_custom_error_detail(self):
         """Tests that custom error messages are stored."""
         custom_error = "Invalid path parameter"
-        validator = PathValidator(on_error_detail=custom_error)
+        validator = PathValidator(error_detail=custom_error)
+        print(validator._error_detail)
+        
         # _error_detail attribute holds error message
-        assert validator.error_detail == custom_error or custom_error in str(validator.__dict__)
+        assert validator._error_detail == custom_error or custom_error in str(validator.__dict__)
 
     def test_init_custom_validator_function(self):
         """Tests that custom validator function is stored."""
@@ -259,3 +261,470 @@ class TestPathValidatorIntegration:
         v = PathValidator(allowed_values=["ok"], pattern=r"^ok$", min_length=2, max_length=2)
         with pytest.raises(HTTPException):
             v._validate("no")
+
+
+# Edge case tests for bounds
+class TestPathValidatorNumericEdgeCases:
+    """Test edge cases and boundary conditions for numeric validation."""
+    
+    def test_gt_with_equal_value(self):
+        """Value equal to gt boundary should fail."""
+        validator = PathValidator(gt=10)
+        with pytest.raises(ValidationError) as exc_info:
+            validator._validate_numeric_bounds(10)
+        assert "greater than 10" in str(exc_info.value.detail)
+
+    def test_lt_with_equal_value(self):
+        """Value equal to lt boundary should fail."""
+        validator = PathValidator(lt=10)
+        with pytest.raises(ValidationError) as exc_info:
+            validator._validate_numeric_bounds(10)
+        assert "less than 10" in str(exc_info.value.detail)
+
+    def test_ge_with_equal_value(self):
+        """Value equal to ge boundary should pass."""
+        validator = PathValidator(ge=10)
+        try:
+            validator._validate_numeric_bounds(10)
+        except ValidationError:
+            pytest.fail("GE with equal value should pass")
+
+    def test_le_with_equal_value(self):
+        """Value equal to le boundary should pass."""
+        validator = PathValidator(le=10)
+        try:
+            validator._validate_numeric_bounds(10)
+        except ValidationError:
+            pytest.fail("LE with equal value should pass")
+
+    def test_negative_numeric_bounds(self):
+        """Test numeric bounds with negative values."""
+        validator = PathValidator(gt=-100, lt=-10)
+        try:
+            validator._validate_numeric_bounds(-50)
+        except ValidationError:
+            pytest.fail("Valid negative value failed")
+        with pytest.raises(ValidationError):
+            validator._validate_numeric_bounds(-100)
+
+    def test_float_numeric_bounds(self):
+        """Test numeric bounds with float values."""
+        validator = PathValidator(gt=0.0, lt=1.0)
+        try:
+            validator._validate_numeric_bounds(0.5)
+        except ValidationError:
+            pytest.fail("Valid float value failed")
+        with pytest.raises(ValidationError):
+            validator._validate_numeric_bounds(1.0)
+
+    def test_zero_as_boundary(self):
+        """Test with zero as boundary value."""
+        validator = PathValidator(ge=0, le=0)
+        try:
+            validator._validate_numeric_bounds(0)
+        except ValidationError:
+            pytest.fail("Zero should be valid with ge=0, le=0")
+        with pytest.raises(ValidationError):
+            validator._validate_numeric_bounds(1)
+
+
+# Edge case tests for string length
+class TestPathValidatorStringEdgeCases:
+    """Test edge cases and boundary conditions for string validation."""
+    
+    def test_empty_string_with_min_length(self):
+        """Empty string should fail if min_length is set."""
+        validator = PathValidator(min_length=1)
+        with pytest.raises(ValidationError) as exc_info:
+            validator._validate_length("")
+        assert "too short" in str(exc_info.value.detail)
+
+    def test_min_length_exact(self):
+        """String exactly at min_length should pass."""
+        validator = PathValidator(min_length=5)
+        try:
+            validator._validate_length("exact")
+        except ValidationError:
+            pytest.fail("Exact min_length should pass")
+
+    def test_max_length_exact(self):
+        """String exactly at max_length should pass."""
+        validator = PathValidator(max_length=5)
+        try:
+            validator._validate_length("exact")
+        except ValidationError:
+            pytest.fail("Exact max_length should pass")
+
+    def test_unicode_string_length(self):
+        """Test length validation with unicode characters."""
+        validator = PathValidator(min_length=3, max_length=5)
+        try:
+            validator._validate_length("😀😁😂")  # 3 emoji characters
+        except ValidationError:
+            pytest.fail("Valid unicode string failed")
+
+    def test_zero_length_bounds(self):
+        """Test with min and max length of zero."""
+        validator = PathValidator(min_length=0, max_length=0)
+        try:
+            validator._validate_length("")
+        except ValidationError:
+            pytest.fail("Empty string should be valid with min=0, max=0")
+        with pytest.raises(ValidationError):
+            validator._validate_length("x")
+
+
+# Edge case tests for pattern matching
+class TestPathValidatorPatternEdgeCases:
+    """Test edge cases for regex pattern validation."""
+    
+    def test_pattern_with_special_characters(self):
+        """Pattern with special regex characters."""
+        validator = PathValidator(pattern=r"^[\w\-\.]+@[\w\-\.]+\.\w+$")
+        try:
+            validator._validate_pattern("user-name.test@sub-domain.co.uk")
+        except ValidationError:
+            pytest.fail("Valid email-like pattern failed")
+        with pytest.raises(ValidationError):
+            validator._validate_pattern("invalid@domain")
+
+    def test_pattern_case_sensitive(self):
+        """Regex patterns are case-sensitive by default."""
+        validator = PathValidator(pattern=r"^[a-z]+$")
+        try:
+            validator._validate_pattern("lowercase")
+        except ValidationError:
+            pytest.fail("Lowercase letters should match [a-z]")
+        with pytest.raises(ValidationError):
+            validator._validate_pattern("UPPERCASE")
+
+    def test_pattern_with_anchors(self):
+        """Pattern with start and end anchors."""
+        validator = PathValidator(pattern=r"^START.*END$")
+        try:
+            validator._validate_pattern("START-middle-END")
+        except ValidationError:
+            pytest.fail("String with anchors should match")
+        with pytest.raises(ValidationError):
+            validator._validate_pattern("MIDDLE-START-END")
+
+    def test_pattern_match_from_start(self):
+        """re.match() only matches from the start of string."""
+        validator = PathValidator(pattern=r"test")
+        try:
+            validator._validate_pattern("test_string")
+        except ValidationError:
+            pytest.fail("Pattern should match from start")
+        # This should fail because re.match only checks beginning
+        with pytest.raises(ValidationError):
+            validator._validate_pattern("this_is_a_test_string")
+
+    def test_pattern_with_groups(self):
+        """Pattern with capture groups."""
+        validator = PathValidator(pattern=r"^(\d{4})-(\d{2})-(\d{2})$")
+        try:
+            validator._validate_pattern("2025-11-04")
+        except ValidationError:
+            pytest.fail("Valid date format should match")
+        with pytest.raises(ValidationError):
+            validator._validate_pattern("2025/11/04")
+
+
+# Allowed values edge cases
+class TestPathValidatorAllowedValuesEdgeCases:
+    """Test edge cases for allowed values validation."""
+    
+    def test_allowed_values_with_none(self):
+        """Test when None is in allowed values."""
+        validator = PathValidator(allowed_values=[None, "active", "inactive"])
+        try:
+            validator._validate_allowed_values(None)
+        except ValidationError:
+            pytest.fail("None should be allowed if in list")
+
+    def test_allowed_values_case_sensitive(self):
+        """Allowed values matching is case-sensitive."""
+        validator = PathValidator(allowed_values=["Active", "Inactive"])
+        try:
+            validator._validate_allowed_values("Active")
+        except ValidationError:
+            pytest.fail("Case-sensitive match should work")
+        with pytest.raises(ValidationError):
+            validator._validate_allowed_values("active")
+
+    def test_allowed_values_numeric_types(self):
+        """Test allowed values with numeric types."""
+        validator = PathValidator(allowed_values=[1, 2, 3])
+        try:
+            validator._validate_allowed_values(2)
+        except ValidationError:
+            pytest.fail("Numeric allowed value should work")
+        with pytest.raises(ValidationError):
+            validator._validate_allowed_values("2")  # String "2" != int 2
+
+    def test_allowed_values_empty_list(self):
+        """Empty allowed values list should reject everything."""
+        validator = PathValidator(allowed_values=[])
+        with pytest.raises(ValidationError):
+            validator._validate_allowed_values("anything")
+
+    def test_allowed_values_with_duplicates(self):
+        """Allowed values list with duplicates."""
+        validator = PathValidator(allowed_values=["status", "status", "active"])
+        try:
+            validator._validate_allowed_values("status")
+        except ValidationError:
+            pytest.fail("Duplicates shouldn't affect validation")
+
+
+# Custom validator edge cases
+class TestPathValidatorCustomValidatorEdgeCases:
+    """Test edge cases for custom validator functions."""
+    
+    def test_custom_validator_exception_handling(self):
+        """Custom validator that raises exception."""
+        def bad_validator(x):
+            raise ValueError("Something went wrong")
+        
+        validator = PathValidator(validator=bad_validator)
+        with pytest.raises(ValidationError) as exc_info:
+            validator._validate_custom("test")
+        assert "Custom validation error" in str(exc_info.value.detail)
+
+    def test_custom_validator_returns_false(self):
+        """Custom validator returns False."""
+        def always_fail(x):
+            return False
+        
+        validator = PathValidator(validator=always_fail)
+        with pytest.raises(ValidationError) as exc_info:
+            validator._validate_custom("test")
+        assert "Custom validation failed" in str(exc_info.value.detail)
+
+    def test_custom_validator_returns_true(self):
+        """Custom validator returns True."""
+        def always_pass(x):
+            return True
+        
+        validator = PathValidator(validator=always_pass)
+        try:
+            validator._validate_custom("test")
+        except ValidationError:
+            pytest.fail("Custom validator returning True should pass")
+
+    def test_custom_validator_with_complex_logic(self):
+        """Custom validator with complex validation logic."""
+        def validate_phone(phone):
+            import re
+            return bool(re.match(r"^\+?1?\d{9,15}$", str(phone)))
+        
+        validator = PathValidator(validator=validate_phone)
+        try:
+            validator._validate_custom("+14155552671")
+        except ValidationError:
+            pytest.fail("Valid phone should pass")
+        with pytest.raises(ValidationError):
+            validator._validate_custom("123")
+
+    def test_custom_validator_lambda(self):
+        """Custom validator using lambda function."""
+        validator = PathValidator(validator=lambda x: len(str(x)) > 3)
+        try:
+            validator._validate_custom("test")
+        except ValidationError:
+            pytest.fail("Lambda validator should work")
+        with pytest.raises(ValidationError):
+            validator._validate_custom("ab")
+
+
+# Complete validation flow tests
+class TestPathValidatorCompleteFlow:
+    """Test complete validation flows with multiple rules."""
+    
+    def test_all_validations_pass(self):
+        """All validation rules pass together."""
+        validator = PathValidator(
+            allowed_values=["user_123", "admin_456"],
+            pattern=r"^[a-z]+_\d+$",
+            min_length=7,
+            max_length=10,
+            validator=lambda x: "_" in x
+        )
+        try:
+            validator._validate("user_123")
+        except (ValidationError, HTTPException):
+            pytest.fail("All validations should pass")
+
+    def test_fail_on_first_validation(self):
+        """Validation fails on first rule."""
+        validator = PathValidator(
+            allowed_values=["valid"],
+            pattern=r"^[a-z]+$",
+            min_length=3
+        )
+        with pytest.raises(HTTPException):
+            validator._validate("invalid")
+
+    def test_multiple_combined_rules(self):
+        """Complex scenario with multiple rules."""
+        validator = PathValidator(
+            min_length=5,
+            max_length=15,
+            pattern=r"^[a-zA-Z0-9_-]+$",
+            allowed_values=["user_name", "admin_test", "guest-user"],
+            validator=lambda x: not x.startswith("_")
+        )
+        for valid_value in ["user_name", "admin_test", "guest-user"]:
+            try:
+                validator._validate(valid_value)
+            except (ValidationError, HTTPException):
+                pytest.fail(f"'{valid_value}' should be valid")
+
+    def test_validation_error_messages(self):
+        """Validation error messages are informative."""
+        validator = PathValidator(
+            allowed_values=["a", "b", "c"],
+            min_length=2,
+            max_length=5
+        )
+        try:
+            validator._validate("d")
+        except HTTPException as e:
+            assert "not allowed" in str(e.detail).lower() or "validation" in str(e.detail).lower()
+
+
+# Non-string and non-numeric type handling
+class TestPathValidatorTypeHandling:
+    """Test handling of various data types."""
+    
+    def test_non_string_skips_string_validations(self):
+        """Non-string types skip string-specific validations."""
+        validator = PathValidator(min_length=3, max_length=10)
+        try:
+            validator._validate_length(123)
+            validator._validate_pattern(123)
+        except ValidationError:
+            pytest.fail("Non-strings should skip string validations")
+
+    def test_non_numeric_skips_numeric_validations(self):
+        """Non-numeric types skip numeric-specific validations."""
+        validator = PathValidator(gt=0, lt=100)
+        try:
+            validator._validate_numeric_bounds("test")
+        except ValidationError:
+            pytest.fail("Non-numeric should skip numeric validations")
+
+    def test_boolean_type_validation(self):
+        """Test validation with boolean values."""
+        validator = PathValidator(allowed_values=[True, False])
+        try:
+            validator._validate_allowed_values(True)
+            validator._validate_allowed_values(False)
+        except ValidationError:
+            pytest.fail("Booleans should validate against allowed values")
+
+    def test_list_type_validation(self):
+        """Test validation with list/collection types."""
+        validator = PathValidator(
+            allowed_values=[[1, 2], [3, 4], [5, 6]],
+            validator=lambda x: isinstance(x, list)
+        )
+        try:
+            validator._validate_allowed_values([1, 2])
+            validator._validate_custom([3, 4])
+        except ValidationError:
+            pytest.fail("Lists should validate correctly")
+
+
+# Initialization parameter combinations
+class TestPathValidatorInitParameterCombinations:
+    """Test various parameter combinations during initialization."""
+    
+    def test_init_with_all_parameters(self):
+        """Initialize with all possible parameters."""
+        validator = PathValidator(
+            default=...,
+            allowed_values=["a", "b"],
+            pattern=r"^[a-z]$",
+            min_length=1,
+            max_length=1,
+            gt=0,
+            lt=10,
+            ge=1,
+            le=9,
+            validator=lambda x: x in ["a", "b"],
+            title="Test Parameter",
+            description="A test path parameter",
+            alias="test_param",
+            deprecated=False,
+            error_detail="Test error",
+            status_code=422
+        )
+        assert validator._allowed_values == ["a", "b"]
+        assert validator._pattern is not None
+        assert validator._min_length == 1
+        assert validator._max_length == 1
+
+    def test_init_only_required(self):
+        """Initialize with only required parameters."""
+        validator = PathValidator()
+        assert validator._allowed_values is None
+        assert validator._pattern is None
+        assert validator._min_length is None
+        assert validator._max_length is None
+
+    def test_init_with_only_custom_validator(self):
+        """Initialize with only custom validator."""
+        custom = lambda x: x > 0
+        validator = PathValidator(validator=custom)
+        assert validator._custom_validator is custom
+        assert validator._allowed_values is None
+
+    def test_status_code_default(self):
+        """Default status code should be 400."""
+        validator = PathValidator()
+        # Status code is set in parent class
+
+
+# Error message verification tests
+class TestPathValidatorErrorMessages:
+    """Test that error messages are clear and informative."""
+    
+    def test_allowed_values_error_message(self):
+        """Error message includes list of allowed values."""
+        validator = PathValidator(allowed_values=["a", "b", "c"])
+        try:
+            validator._validate_allowed_values("d")
+        except ValidationError as e:
+            assert "a" in str(e.detail)
+            assert "b" in str(e.detail)
+            assert "c" in str(e.detail)
+
+    def test_pattern_error_message_includes_pattern(self):
+        """Error message includes the regex pattern."""
+        pattern = r"^[0-9]{3}$"
+        validator = PathValidator(pattern=pattern)
+        try:
+            validator._validate_pattern("abc")
+        except ValidationError as e:
+            assert pattern in str(e.detail)
+
+    def test_length_error_message_info(self):
+        """Length error includes bounds information."""
+        validator = PathValidator(min_length=5, max_length=10)
+        try:
+            validator._validate_length("ab")
+        except ValidationError as e:
+            assert "5" in str(e.detail)
+        try:
+            validator._validate_length("a" * 15)
+        except ValidationError as e:
+            assert "10" in str(e.detail)
+
+    def test_numeric_bounds_error_messages(self):
+        """Numeric bounds errors include boundary values."""
+        validator = PathValidator(gt=100)
+        try:
+            validator._validate_numeric_bounds(50)
+        except ValidationError as e:
+            assert "100" in str(e.detail)

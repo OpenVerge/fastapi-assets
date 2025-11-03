@@ -32,8 +32,8 @@ class MockBaseValidator:
     """Mock the BaseValidator class."""
 
     def __init__(self, status_code: int = 400, error_detail: str = "Validation failed."):
-        self.status_code = status_code
-        self.error_detail = error_detail
+        self._status_code = status_code
+        self._error_detail = error_detail
 
     def _raise_error(self, status_code: int, detail: str) -> None:
         """Mock the error raising to throw HTTPException, as a FastAPI dependency would."""
