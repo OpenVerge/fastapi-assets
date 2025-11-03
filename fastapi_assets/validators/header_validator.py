@@ -143,7 +143,7 @@ class HeaderValidator(BaseValidator):
         """
         # If value is None, return a dependency that FastAPI will use
         if header_value is None:
-            def dependency(value: Optional[str] = self._header_param) -> str:
+            def dependency(value: Optional[str] = self._header_param) -> Optional[str]:
                 return self._validate(value)
             return dependency
 
