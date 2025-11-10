@@ -12,9 +12,6 @@ from typing import Callable, Generator
 import pytest
 from fastapi import UploadFile, HTTPException
 
-# --- Module under test ---
-# (Adjust this import path based on your project structure)
-# We assume the code is in: fastapi_assets/validators/csv_validator.py
 from fastapi_assets.validators.csv_validator import CSVValidator
 
 # Mock pandas for the dependency test
@@ -25,7 +22,7 @@ except ImportError:
     pd = None
 
 
-# --- Fixtures ---
+#  Fixtures
 
 
 @pytest.fixture
@@ -76,20 +73,20 @@ def mock_upload_file_factory() -> Generator[Callable[..., UploadFile], None, Non
     # Yield the factory function to the tests
     yield _create_file
 
-    # --- Teardown ---
+    #  Teardown
     # Close all files created by the factory
     for f in files_to_close:
         f.close()
 
 
-# --- Test Cases ---
+#  Test Cases
 
 
 @pytest.mark.asyncio
 class TestCSVValidator:
     """Groups all tests for the CSVValidator."""
 
-    # --- Basic Success and File Handling ---
+    #  Basic Success and File Handling
 
     async def test_happy_path_validation(self, mock_upload_file_factory: Callable[..., UploadFile]):
         """
@@ -128,7 +125,7 @@ class TestCSVValidator:
         # Check if the file pointer is at the beginning
         assert await file.read() == csv_content.encode("utf-8")
 
-    # --- Dependency Check ---
+    #  Dependency Check
 
     def test_pandas_dependency_check(self, monkeypatch):
         """
@@ -152,7 +149,7 @@ class TestCSVValidator:
         # Restore pandas for other tests
         monkeypatch.setattr("fastapi_assets.validators.csv_validator.pd", pd)
 
-    # --- CSV-Specific Validations ---
+    #  CSV-Specific Validations
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -259,7 +256,7 @@ class TestCSVValidator:
         validator_pass = CSVValidator(min_rows=3, max_rows=3, header_check_only=header_check_only)
         await validator_pass(mock_upload_file_factory(csv_content))
 
-    # --- Error Handling and Custom Messages ---
+    #  Error Handling and Custom Messages
 
     @pytest.mark.asyncio
     async def test_csv_parsing_error(self, mock_upload_file_factory):
@@ -299,7 +296,7 @@ class TestCSVValidator:
             await validator_row(mock_upload_file_factory(csv_content))
         assert exc_row.value.detail == "File must have at least 5 data rows."
 
-    # --- Inherited Validation ---
+    #  Inherited Validation
 
     @pytest.mark.asyncio
     async def test_inherited_max_size_validation(self, mock_upload_file_factory):

@@ -1,289 +1,194 @@
 """Module providing the PathValidator for validating path parameters in FastAPI."""
-import re
+
 from typing import Any, Callable, List, Optional, Union
-from fastapi import Depends, Path
-from fastapi_assets.core.base_validator import BaseValidator, ValidationError
+from inspect import Signature, Parameter
+from fastapi import Path
+from fastapi_assets.core import BaseValidator, ValidationError
 
 
 class PathValidator(BaseValidator):
     r"""
-    A general-purpose dependency for validating path parameters in FastAPI.
+    A dependency factory for adding custom validation to FastAPI path parameters.
 
-    It validates path parameters with additional constraints like allowed values,
-    regex patterns, string length checks, numeric bounds, and custom validators.
+    This class extends the functionality of FastAPI's `Path()` by adding
+    support for `allowed_values` and custom `validators`.
 
+    It acts as a factory: you instantiate it, and then *call* the
+    instance inside `Depends()` to get the actual dependency.
+
+    Example:
     .. code-block:: python
-        from fastapi import FastAPI
-        from fastapi_assets.path_validator import PathValidator
+
+        from fastapi import FastAPI, Depends
+        from fastapi_assets.request_validators import PathValidator
 
         app = FastAPI()
 
-        # Create reusable validators
+        # 1. Create reusable validator *instances*
         item_id_validator = PathValidator(
+            "item_id",
+            _type=int,
             gt=0,
             lt=1000,
-            error_detail="Item ID must be between 1 and 999"
         )
 
         username_validator = PathValidator(
+            "username",
+            _type=str,
             min_length=5,
             max_length=15,
             pattern=r"^[a-zA-Z0-9]+$",
-            error_detail="Username must be 5-15 alphanumeric characters"
         )
 
         @app.get("/items/{item_id}")
-        def get_item(item_id: int = item_id_validator):
+        def get_item(item_id: int = Depends(item_id_validator())):
             return {"item_id": item_id}
 
         @app.get("/users/{username}")
-        def get_user(username: str = username_validator):
+        def get_user(username: str = Depends(username_validator())):
             return {"username": username}
     """
 
     def __init__(
         self,
+        param_name: str,
+        _type: type,
         default: Any = ...,
         *,
+        # Custom validation rules
         allowed_values: Optional[List[Any]] = None,
-        pattern: Optional[str] = None,
-        min_length: Optional[int] = None,
-        max_length: Optional[int] = None,
+        validators: Optional[List[Callable[[Any], Any]]] = None,
+        on_custom_validator_error_detail: str = "Custom validation failed.",
+        # Standard Path() parameters
+        title: Optional[str] = None,
+        description: Optional[str] = None,
         gt: Optional[Union[int, float]] = None,
         lt: Optional[Union[int, float]] = None,
         ge: Optional[Union[int, float]] = None,
         le: Optional[Union[int, float]] = None,
-        validator: Optional[Callable[[Any], bool]] = None,
-        # Standard Path() parameters
-        title: Optional[str] = None,
-        description: Optional[str] = None,
-        alias: Optional[str] = None,
+        min_length: Optional[int] = None,
+        max_length: Optional[int] = None,
+        pattern: Optional[str] = None,
         deprecated: Optional[bool] = None,
-        **path_kwargs : Any
+        **path_kwargs: Any,
     ) -> None:
         """
-        Initializes the PathValidator.
+        Initializes the PathValidator factory.
 
         Args:
-            default: Default value for the path parameter (usually ... for required).
-            allowed_values: List of allowed values for the parameter.
-            pattern: Regex pattern the parameter must match (for strings).
-            min_length: Minimum length for string parameters.
-            max_length: Maximum length for string parameters.
-            gt: Value must be greater than this (for numeric parameters).
-            lt: Value must be less than this (for numeric parameters).
-            ge: Value must be greater than or equal to this.
-            le: Value must be less than or equal to this.
-            validator: Custom validation function that takes the value and returns bool.
+            param_name: The exact name of the path parameter.
+            _type: The Python type for coercion (e.g., int, str, UUID).
+            default: Default value for the path parameter.
+            allowed_values: List of allowed values.
+            validators: List of custom validation functions.
+            on_custom_validator_error_detail: Error message for custom validators.
             title: Title for API documentation.
             description: Description for API documentation.
-            alias: Alternative parameter name.
+            gt: Value must be greater than this.
+            lt: Value must be less than this.
+            ge: Value must be greater than or equal to this.
+            le: Value must be less than or equal to this.
+            min_length: Minimum length for string parameters.
+            max_length: Maximum length for string parameters.
+            pattern: Regex pattern the parameter must match.
             deprecated: Whether the parameter is deprecated.
             **path_kwargs: Additional arguments passed to FastAPI's Path().
         """
-        path_kwargs["error_detail"] = path_kwargs.get("error_detail", "Path parameter validation failed.")
-        path_kwargs["status_code"] = path_kwargs.get("status_code", 400)
-        # Call super() with default error handling
-        super().__init__(
-            **path_kwargs
-        )
-        # Store validation rules
-        self._allowed_values = allowed_values
-        self._pattern = re.compile(pattern) if pattern else None
-        self._min_length = min_length
-        self._max_length = max_length
-        self._gt = gt
-        self._lt = lt
-        self._ge = ge
-        self._le = le
-        self._custom_validator = validator
+        path_kwargs.setdefault("error_detail", "Path parameter validation failed.")
+        path_kwargs.setdefault("status_code", 400)
 
-        # Store the underlying FastAPI Path parameter
-        # This preserves all standard Path() features (title, description, etc.)
+        super().__init__(
+            status_code=path_kwargs["status_code"],
+            error_detail=path_kwargs["error_detail"],
+            validators=validators,
+        )
+
+        self._param_name = param_name
+        self._type = _type
+        self._allowed_values = allowed_values
+        self._on_custom_validator_error_detail = on_custom_validator_error_detail
+
         self._path_param = Path(
             default,
             title=title,
             description=description,
-            alias=alias,
             deprecated=deprecated,
             gt=gt,
             lt=lt,
             ge=ge,
             le=le,
-            **path_kwargs
+            min_length=min_length,
+            max_length=max_length,
+            pattern=pattern,
+            **path_kwargs,
         )
 
-    def __call__(self, value: Any = None) -> Any:
+    def __call__(self) -> Callable[..., Any]:
         """
-        FastAPI dependency entry point for path validation.
-
-        Args:
-            value: The path parameter value extracted from the URL.
-
-        Returns:
-            The validated path parameter value.
-
-        Raises:
-            HTTPException: If validation fails.
+        This is the factory method.
+        It generates and returns the dependency function
+        that FastAPI will use.
         """
-        # If value is None, it means FastAPI will inject the actual path parameter
-        # This happens because FastAPI handles the Path() dependency internally
-        if value is None:
-            # Return a dependency that FastAPI will use
-            async def dependency(param_value: Any = self._path_param) -> Any:
-                return self._validate(param_value)
-            return Depends(dependency)
 
-        # If value is provided (for testing), validate directly
-        return self._validate(value)
+        async def dependency(**kwargs: Any) -> Any:
+            path_value = kwargs[self._param_name]
+            try:
+                validated_value = await self._validate(path_value)
+                return validated_value
+            except ValidationError as e:
+                self._raise_error(path_value, status_code=e.status_code, detail=e.detail)
+            return None
 
-    def _validate(self, value: Any) -> Any:
+        sig = Signature(
+            [
+                Parameter(
+                    self._param_name,
+                    Parameter.KEYWORD_ONLY,
+                    default=self._path_param,
+                    annotation=self._type,
+                )
+            ]
+        )
+
+        dependency.__signature__ = sig  # type: ignore
+        return dependency
+
+    async def _validate(self, value: Any) -> Any:
         """
-        Runs all validation checks on the parameter value.
+        Runs all validation checks on the path parameter value.
+
+        Executes allowed values checking and custom validator checking in sequence.
 
         Args:
             value: The path parameter value to validate.
 
         Returns:
-            The validated value.
+            Any: The validated value (unchanged if validation passes).
 
         Raises:
-            HTTPException: If any validation check fails.
+            ValidationError: If any validation check fails.
         """
-        try:
-            self._validate_allowed_values(value)
-            self._validate_pattern(value)
-            self._validate_length(value)
-            self._validate_numeric_bounds(value)
-            self._validate_custom(value)
-        except ValidationError as e:
-            # Convert ValidationError to HTTPException
-            self._raise_error(
-                status_code=e.status_code,
-                detail=str(e.detail)
-            )
-
+        self._validate_allowed_values(value)
+        await self._validate_custom(value)
         return value
 
     def _validate_allowed_values(self, value: Any) -> None:
         """
-        Checks if the value is in the list of allowed values.
+        Checks if the path parameter value is in the list of allowed values.
 
         Args:
-            value: The parameter value to check.
+            value: The value to validate.
+
+        Returns:
+            None
 
         Raises:
-            ValidationError: If the value is not in allowed_values.
+            ValidationError: If the value is not in the allowed values list.
         """
         if self._allowed_values is None:
-            return  # No validation rule set
+            return
 
         if value not in self._allowed_values:
-            detail = (
-                f"Value '{value}' is not allowed. "
-                f"Allowed values are: {', '.join(map(str, self._allowed_values))}"
-            )
-            raise ValidationError(detail=detail, status_code=400)
-
-    def _validate_pattern(self, value: Any) -> None:
-        """
-        Checks if the string value matches the required regex pattern.
-
-        Args:
-            value: The parameter value to check.
-
-        Raises:
-            ValidationError: If the value doesn't match the pattern.
-        """
-        if self._pattern is None:
-            return  # No validation rule set
-
-        if not isinstance(value, str):
-            return  # Pattern validation only applies to strings
-
-        if not self._pattern.match(value):
-            detail = (
-                f"Value '{value}' does not match the required pattern: "
-                f"{self._pattern.pattern}"
-            )
-            raise ValidationError(detail=detail, status_code=400)
-
-    def _validate_length(self, value: Any) -> None:
-        """
-        Checks if the string length is within the specified bounds.
-
-        Args:
-            value: The parameter value to check.
-
-        Raises:
-            ValidationError: If the length is out of bounds.
-        """
-        if not isinstance(value, str):
-            return  # Length validation only applies to strings
-
-        value_len = len(value)
-
-        if self._min_length is not None and value_len < self._min_length:
-            detail = (
-                f"Value '{value}' is too short. "
-                f"Minimum length is {self._min_length} characters."
-            )
-            raise ValidationError(detail=detail, status_code=400)
-
-        if self._max_length is not None and value_len > self._max_length:
-            detail = (
-                f"Value '{value}' is too long. "
-                f"Maximum length is {self._max_length} characters."
-            )
-            raise ValidationError(detail=detail, status_code=400)
-
-    def _validate_numeric_bounds(self, value: Any) -> None:
-        """
-        Checks if numeric values satisfy gt, lt, ge, le constraints.
-
-        Args:
-            value: The parameter value to check.
-
-        Raises:
-            ValidationError: If the value is out of the specified bounds.
-        """
-        if not isinstance(value, (int, float)):
-            return  # Numeric validation only applies to numbers
-
-        if self._gt is not None and value <= self._gt:
-            detail = f"Value must be greater than {self._gt}"
-            raise ValidationError(detail=detail, status_code=400)
-
-        if self._lt is not None and value >= self._lt:
-            detail = f"Value must be less than {self._lt}"
-            raise ValidationError(detail=detail, status_code=400)
-
-        if self._ge is not None and value < self._ge:
-            detail = f"Value must be greater than or equal to {self._ge}"
-            raise ValidationError(detail=detail, status_code=400)
-
-        if self._le is not None and value > self._le:
-            detail = f"Value must be less than or equal to {self._le}"
-            raise ValidationError(detail=detail, status_code=400)
-
-    def _validate_custom(self, value: Any) -> None:
-        """
-        Runs a custom validation function if provided.
-
-        Args:
-            value: The parameter value to check.
-
-        Raises:
-            ValidationError: If the custom validator returns False or raises an exception.
-        """
-        if self._custom_validator is None:
-            return  # No custom validator set
-
-        try:
-            if not self._custom_validator(value):
-                detail = f"Custom validation failed for value '{value}'"
-                raise ValidationError(detail=detail, status_code=400)
-        except Exception as e:
-            # If the validator itself raises an exception, catch it
-            detail = f"Custom validation error: {str(e)}"
+            allowed_str = ", ".join(map(str, self._allowed_values))
+            detail = f"Value '{value}' is not allowed. Allowed values are: {allowed_str}"
             raise ValidationError(detail=detail, status_code=400)

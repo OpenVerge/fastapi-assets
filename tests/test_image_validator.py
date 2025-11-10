@@ -22,7 +22,7 @@ from PIL import Image
 class MockValidationError(Exception):
     """Mock a ValidationError for testing."""
 
-    def __init__(self, detail: str, status_code: int):
+    def __init__(self, detail: str, status_code: int = 400):
         self.detail = detail
         self.status_code = status_code
         super().__init__(detail)
@@ -129,6 +129,7 @@ def create_mock_image_file(
     file.filename = filename
     file.content_type = content_type
     file.file = buffer
+    file.size = len(buffer.getvalue())  # Set the size attribute
 
     # Create a wrapper for seek
     async def mock_seek(offset):
@@ -161,6 +162,7 @@ def create_mock_text_file(filename: str) -> UploadFile:
     file.filename = filename
     file.content_type = "text/plain"
     file.file = buffer
+    file.size = len(buffer.getvalue())  # Set the size attribute
 
     # Create a wrapper for seek
     async def mock_seek(offset):
@@ -281,7 +283,7 @@ class TestImageValidator:
                 await validator(file)
 
             assert exc_info.value.status_code == 413  # From our mock
-            assert "File is too large" in exc_info.value.detail
+            assert "exceeds the maximum limit" in exc_info.value.detail
         finally:
             await file.close()
 
