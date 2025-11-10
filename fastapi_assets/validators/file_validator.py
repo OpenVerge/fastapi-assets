@@ -33,7 +33,7 @@ class FileValidator(BaseValidator):
 
     .. code-block:: python
         from fastapi import FastAPI, UploadFile, Depends
-        from fastapi_assets.validators.file_validator import FileValidator
+        from fastapi_assets.validators import FileValidator
 
         app = FastAPI()
 
@@ -64,6 +64,7 @@ class FileValidator(BaseValidator):
         on_size_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         on_type_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
         on_filename_error_detail: Optional[Union[str, Callable[[Any], str]]] = None,
+        validators: Optional[List[Callable]] = None,
         **kwargs: Any,
     ):
         """
@@ -83,7 +84,11 @@ class FileValidator(BaseValidator):
         # by the specific error handlers.
         kwargs["error_detail"] = kwargs.get("error_detail", "File validation failed.")
         kwargs["status_code"] = 400
-        super().__init__(**kwargs)
+        super().__init__(
+            error_detail=kwargs["error_detail"],
+            status_code=kwargs["status_code"],
+            validators=validators,
+        )
 
         # Parse sizes once
         self._max_size = (
@@ -106,28 +111,31 @@ class FileValidator(BaseValidator):
         self._type_error_detail = on_type_error_detail
         self._filename_error_detail = on_filename_error_detail
 
-    async def __call__(self, file: UploadFile = File(...), **kwargs: Any) -> StarletteUploadFile:
+    async def __call__(self, file: UploadFile = File(...)) -> StarletteUploadFile:
         """
         FastAPI dependency entry point for file validation.
+
+        Runs all configured validation checks on the uploaded file (content type,
+        filename, size, and custom validators) and returns the validated file
+        after rewinding it so the endpoint can read it from the beginning.
+
         Args:
             file: The uploaded file to validate.
+
         Returns:
-            The validated UploadFile object.
+            StarletteUploadFile: The validated UploadFile object, rewound to the start.
+
         Raises:
-            HTTPException: If validation fails.
+            HTTPException: If any validation check fails.
         """
         try:
-            self._validate_content_type(file)
-            self._validate_filename(file)
-            await self._validate_size(file)
-            # Additional validations can be added here
+            await self._validate(file=file)
         except ValidationError as e:
             # Our custom validation exception, convert to HTTPException
             self._raise_error(status_code=e.status_code, detail=str(e.detail))
         except Exception as e:
             # Catch any other unexpected error during validation
             await file.close()
-            print("Raising HTTPException for unexpected error:", e)
             self._raise_error(
                 status_code=400,
                 detail="An unexpected error occurred during file validation.",
@@ -138,14 +146,42 @@ class FileValidator(BaseValidator):
         await file.seek(0)
         return file
 
-    def _validate_content_type(self, file: UploadFile) -> None:
-        """Checks the file's MIME type.
+    async def _validate(self, file: UploadFile) -> None:
+        """
+        Runs all file validation checks in sequence.
+
+        Executes content-type, filename, size, and custom validator checks
+        on the uploaded file.
+
         Args:
             file: The uploaded file to validate.
+
         Returns:
             None
+
         Raises:
-            ValidationError: If the content type is not allowed.
+            ValidationError: If any validation check fails.
+        """
+        self._validate_content_type(file)
+        self._validate_filename(file)
+        await self._validate_size(file=file)
+        await self._validate_custom(value=file)
+
+    def _validate_content_type(self, file: UploadFile) -> None:
+        """
+        Validates that the file's MIME type is in the allowed list.
+
+        Checks the file's Content-Type against the configured allowed types,
+        supporting wildcard patterns (e.g., "image/*").
+
+        Args:
+            file: The uploaded file to validate.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If the content type is not in the allowed list.
         """
         if not self._content_types:
             return  # No validation rule set
@@ -156,12 +192,22 @@ class FileValidator(BaseValidator):
                 f"File has an unsupported media type: '{file_type}'. "
                 f"Allowed types are: {', '.join(self._content_types)}"
             )
-            print("Raising ValidationError for content type:", detail)
             # Use 415 for Unsupported Media Type
             raise ValidationError(detail=str(detail), status_code=415)
 
     def _validate_filename(self, file: UploadFile) -> None:
-        """Checks the file's name against a regex pattern."""
+        """
+        Validates that the filename matches the configured regex pattern.
+
+        Args:
+            file: The uploaded file to validate.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If the filename doesn't match the pattern or is missing.
+        """
         if not self._filename_regex:
             return  # No validation rule set
 
@@ -173,8 +219,19 @@ class FileValidator(BaseValidator):
 
     async def _validate_size(self, file: UploadFile) -> None:
         """
-        Checks file size, using Content-Length if available,
-        or streaming and counting if not.
+        Validates that the file size is within configured bounds.
+
+        Uses the Content-Length header if available for efficiency, otherwise
+        streams the file to determine its actual size.
+
+        Args:
+            file: The uploaded file to validate.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If the file size exceeds max_size or is below min_size.
         """
         if self._max_size is None and self._min_size is None:
             return  # No validation rule set

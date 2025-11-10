@@ -7,7 +7,7 @@ from fastapi_assets.core.base_validator import BaseValidator
 from fastapi_assets.core.exceptions import ValidationError
 
 
-# --- Test Setup ---
+#  Test Setup
 
 
 class _MockValidator(BaseValidator):
@@ -23,6 +23,10 @@ class _MockValidator(BaseValidator):
         """Minimal implementation to satisfy the abstract contract."""
         pass
 
+    def _validate(self, value: Any) -> None:
+        """Minimal implementation to satisfy the abstract contract."""
+        pass
+
     def public_raise_error(
         self,
         value: Any,
@@ -35,7 +39,7 @@ class _MockValidator(BaseValidator):
         self._raise_error(value=value, status_code=status_code, detail=detail)
 
 
-# --- Test Cases ---
+#  Test Cases
 
 
 def test_cannot_instantiate_abstract_class() -> None:

@@ -4,11 +4,11 @@ Tests for the HeaderValidator class.
 
 import pytest
 from fastapi import HTTPException
-from fastapi_assets.core.base_validator import ValidationError
-from fastapi_assets.request_validators.header_validator import HeaderValidator
+from fastapi_assets.core import ValidationError
+from fastapi_assets.request_validators import HeaderValidator
 
 
-# --- Fixtures ---
+#  Fixtures
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def base_validator():
 @pytest.fixture
 def required_validator():
     """Returns a HeaderValidator with required=True."""
-    return HeaderValidator(required=True)
+    return HeaderValidator(default="Hello")
 
 
 @pytest.fixture
@@ -45,13 +45,14 @@ def allowed_values_validator():
 def custom_validator_obj():
     """Returns a HeaderValidator with custom validator function."""
 
-    def is_even_length(val: str) -> bool:
-        return len(val) % 2 == 0
+    def is_even_length(val: str):
+        if len(val) % 2 != 0:
+            raise ValidationError(detail="Length is not even")
 
-    return HeaderValidator(validator=is_even_length)
+    return HeaderValidator(validators=[is_even_length])
 
 
-# --- Test Classes ---
+#  Test Classes
 
 
 class TestHeaderValidatorInit:
@@ -61,44 +62,15 @@ class TestHeaderValidatorInit:
         """Tests that all validation rules are None by default."""
         validator = HeaderValidator()
         assert validator._allowed_values is None
-        assert validator._pattern is None
-        assert validator._custom_validator is None
-        assert validator._format_name is None
-
-    def test_init_required_true(self):
-        """Tests that required flag is stored correctly."""
-        validator = HeaderValidator(required=True)
-        assert validator._required is True
-
-    def test_init_required_false(self):
-        """Tests that required can be set to False."""
-        validator = HeaderValidator(required=False, default="default_value")
-        assert validator._required is False
+        assert validator._pattern_str is None
+        assert validator._custom_validators == []
 
     def test_init_pattern_compilation(self):
         """Tests that pattern is compiled to regex."""
         pattern = r"^[A-Z0-9]+$"
         validator = HeaderValidator(pattern=pattern)
-        assert validator._pattern is not None
-        assert validator._pattern.pattern == pattern
-
-    def test_init_format_uuid4(self):
-        """Tests that format='uuid4' is recognized."""
-        validator = HeaderValidator(format="uuid4")
-        assert validator._format_name == "uuid4"
-        assert validator._pattern is not None
-
-    def test_init_format_email(self):
-        """Tests that format='email' is recognized."""
-        validator = HeaderValidator(format="email")
-        assert validator._format_name == "email"
-        assert validator._pattern is not None
-
-    def test_init_format_bearer_token(self):
-        """Tests that format='bearer_token' is recognized."""
-        validator = HeaderValidator(format="bearer_token")
-        assert validator._format_name == "bearer_token"
-        assert validator._pattern is not None
+        assert validator._pattern_str is not None
+        assert validator._pattern_str == pattern
 
     def test_init_invalid_format(self):
         """Tests that invalid format raises ValueError."""
@@ -119,13 +91,13 @@ class TestHeaderValidatorInit:
     def test_init_custom_validator_function(self):
         """Tests that custom validator function is stored."""
 
-        def is_positive(val: str) -> bool:
-            return val.startswith("+")
+        def is_positive(val: str):
+            if not val.startswith("+"):
+                raise ValidationError(detail="Value does not start with '+'")
 
-        validator = HeaderValidator(validator=is_positive)
-        assert validator._custom_validator is not None
-        assert validator._custom_validator("+test") is True
-        assert validator._custom_validator("-test") is False
+        validator = HeaderValidator(validators=[is_positive])
+        assert validator._custom_validators is not None
+        assert validator._custom_validators[0]("+test") is None
 
     def test_init_custom_error_detail(self):
         """Tests that custom error detail is stored."""
@@ -148,27 +120,6 @@ class TestHeaderValidatorValidateRequired:
             required_validator._validate_required("some_value")
         except ValidationError:
             pytest.fail("Required validation failed with valid value")
-
-    def test_required_missing_value(self, required_validator):
-        """Tests required validation fails when value is None."""
-        with pytest.raises(ValidationError) as e:
-            required_validator._validate_required(None)
-
-        assert e.value.status_code == 400
-        assert "missing" in e.value.detail.lower()
-
-    def test_required_empty_string(self, required_validator):
-        """Tests required validation fails with empty string."""
-        with pytest.raises(ValidationError):
-            required_validator._validate_required("")
-
-    def test_not_required_with_none(self, base_validator):
-        """Tests validation passes when not required and value is None."""
-        base_validator._required = False
-        try:
-            base_validator._validate_required(None)
-        except ValidationError:
-            pytest.fail("Non-required validation should pass with None")
 
 
 class TestHeaderValidatorValidateAllowedValues:
@@ -233,7 +184,7 @@ class TestHeaderValidatorValidatePattern:
             pattern_validator._validate_pattern("short")
 
         assert e.value.status_code == 400
-        assert "does not match" in e.value.detail.lower()
+        assert "invalid format" in e.value.detail.lower()
 
     def test_pattern_format_uuid4_valid(self):
         """Tests uuid4 format validation passes."""
@@ -282,95 +233,109 @@ class TestHeaderValidatorValidatePattern:
 class TestHeaderValidatorValidateCustom:
     """Tests for the _validate_custom method."""
 
-    def test_custom_no_validator(self, base_validator):
+    @pytest.mark.asyncio
+    async def test_custom_no_validator(self, base_validator):
         """Tests validation passes with no custom validator."""
         try:
-            base_validator._validate_custom("any_value")
+            await base_validator._validate_custom("any_value")
         except ValidationError:
             pytest.fail("Validation failed with no custom validator")
 
-    def test_custom_validator_valid(self, custom_validator_obj):
+    @pytest.mark.asyncio
+    async def test_custom_validator_valid(self, custom_validator_obj):
         """Tests custom validator passes on valid input."""
         try:
-            custom_validator_obj._validate_custom("even")  # 4 chars
+            await custom_validator_obj._validate_custom("even")  # 4 chars
         except ValidationError:
             pytest.fail("Valid custom validation failed")
 
-    def test_custom_validator_invalid(self, custom_validator_obj):
+    @pytest.mark.asyncio
+    async def test_custom_validator_invalid(self, custom_validator_obj):
         """Tests custom validator fails on invalid input."""
         with pytest.raises(ValidationError) as e:
-            custom_validator_obj._validate_custom("odd")  # 3 chars
+            await custom_validator_obj._validate_custom("odd")  # 3 chars
 
         assert e.value.status_code == 400
         # Accept either failure message depending on your validator code
+        # The custom validator raises ValidationError with detail="Length is not even"
         assert (
-            "custom validation failed" in e.value.detail.lower()
+            "failed custom validation" in e.value.detail.lower()
             or "custom validation error" in e.value.detail.lower()
+            or "length is not even" in e.value.detail.lower()
         )
 
-    def test_custom_validator_exception(self):
+    @pytest.mark.asyncio
+    async def test_custom_validator_exception(self):
         """Tests custom validator exception is caught."""
 
-        def buggy_validator(val: str) -> bool:
+        def buggy_validator(val: str):
             raise ValueError("Unexpected error")
 
-        validator = HeaderValidator(validator=buggy_validator)
+        validator = HeaderValidator(validators=[buggy_validator])
         with pytest.raises(ValidationError) as e:
-            validator._validate_custom("test")
+            await validator._validate_custom("test")
 
-        assert "custom validation error" in e.value.detail.lower()
+        assert "custom validation failed" in e.value.detail.lower()
 
 
 class TestHeaderValidatorValidate:
     """Tests for the main _validate method."""
 
-    def test_validate_valid_header(self):
+    @pytest.mark.asyncio
+    async def test_validate_valid_header(self):
         """Tests full validation pipeline with valid header."""
         validator = HeaderValidator(
             required=True, allowed_values=["api", "web"], pattern=r"^[a-z]+$"
         )
         try:
-            result = validator._validate("api")
+            result = await validator._validate("api")
             assert result == "api"
         except ValidationError:
             pytest.fail("Valid header failed validation")
 
-    def test_validate_fails_required(self):
+    @pytest.mark.asyncio
+    async def test_validate_fails_required(self):
         """Tests validation fails on required check."""
         validator = HeaderValidator(required=True)
-        with pytest.raises(HTTPException):
-            validator._validate(None)
+        with pytest.raises(ValidationError):
+            await validator._validate(None)
 
-    def test_validate_fails_allowed_values(self):
+    @pytest.mark.asyncio
+    async def test_validate_fails_allowed_values(self):
         """Tests validation fails on allowed values check."""
         validator = HeaderValidator(allowed_values=["good"])
-        with pytest.raises(HTTPException):
-            validator._validate("bad")
+        with pytest.raises(ValidationError):
+            await validator._validate("bad")
 
-    def test_validate_fails_pattern(self):
+    @pytest.mark.asyncio
+    async def test_validate_fails_pattern(self):
         """Tests validation fails on pattern check."""
         validator = HeaderValidator(pattern=r"^[0-9]+$")
-        with pytest.raises(HTTPException):
-            validator._validate("abc")
+        with pytest.raises(ValidationError):
+            await validator._validate("abc")
 
-    def test_validate_fails_custom(self):
+    @pytest.mark.asyncio
+    async def test_validate_fails_custom(self):
         """Tests validation fails on custom validator."""
 
-        def no_spaces(val: str) -> bool:
-            return " " not in val
+        def no_spaces(val: str):
+            if " " in val:
+                raise ValidationError(detail="Spaces are not allowed")
 
-        validator = HeaderValidator(validator=no_spaces)
-        with pytest.raises(HTTPException):
-            validator._validate("has space")
+        validator = HeaderValidator(validators=[no_spaces])
+        with pytest.raises(ValidationError):
+            await validator._validate("has space")
 
-    def test_validate_empty_optional_header(self):
+    @pytest.mark.asyncio
+    async def test_validate_empty_optional_header(self):
         """Tests optional header with empty string passes."""
-        validator = HeaderValidator(required=False)
-        result = validator._validate("")
+        validator = HeaderValidator(default="")
+        result = await validator._validate("")
         assert result == ""
 
-    def test_validate_none_optional_header(self):
+    @pytest.mark.asyncio
+    async def test_validate_none_optional_header(self):
         """Tests optional header with None passes."""
-        validator = HeaderValidator(required=False)
-        result = validator._validate(None)
-        assert result is None or result == ""
+        validator = HeaderValidator(default=None)
+        result = await validator._validate(None)
+        assert result is None

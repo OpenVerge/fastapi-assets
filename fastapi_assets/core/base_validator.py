@@ -1,9 +1,10 @@
 """Base classes for FastAPI validation dependencies."""
 
 import abc
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, List
 from fastapi import HTTPException
 from fastapi_assets.core.exceptions import ValidationError
+import inspect
 
 
 class BaseValidator(abc.ABC):
@@ -20,7 +21,7 @@ class BaseValidator(abc.ABC):
         from fastapi import Header
         from fastapi_assets.core.base_validator import BaseValidator, ValidationError
         class MyValidator(BaseValidator):
-            def _validate_logic(self, token: str) -> None:
+            def _validate(self, token: str) -> None:
                 # This method is testable without FastAPI
                 if not token.startswith("sk_"):
                     # Raise the logic-level exception
@@ -44,6 +45,7 @@ class BaseValidator(abc.ABC):
         *,
         status_code: int = 400,
         error_detail: Union[str, Callable[[Any], str]] = "Validation failed.",
+        validators: Optional[List[Callable]] = None,
     ):
         """
         Initializes the base validator.
@@ -54,9 +56,11 @@ class BaseValidator(abc.ABC):
             error_detail: The default error message. Can be a static
                 string or a callable that takes the invalid value as its
                 argument and returns a dynamic error string.
+            validators: Optional list of callables for custom validation logic.
         """
         self._status_code = status_code
         self._error_detail = error_detail
+        self._custom_validators = validators or []
 
     def _raise_error(
         self,
@@ -65,17 +69,25 @@ class BaseValidator(abc.ABC):
         detail: Optional[Union[str, Callable[[Any], str]]] = None,
     ) -> None:
         """
-        Helper method to raise a standardized HTTPException.
+        Raises a standardized HTTPException with resolved error detail.
 
-        It automatically resolves callable error details.
+        This helper method handles both static error strings and dynamic error
+        callables, automatically resolving them to a final error message before
+        raising the HTTPException.
 
         Args:
-            value (Optional[Any]): The value that failed validation. This is passed
-                to the error_detail callable, if it is one.
-            status_code (Optional[int]): A specific status code for this failure,
-                overriding the instance's default status_code.
-            detail (Optional[Union[str, Callable[[Any], str]]]): A specific error detail for this failure,
-                overriding the instance's default error_detail.
+            value: The value that failed validation. Passed to the error_detail
+                callable if it is callable.
+            status_code: A specific HTTP status code for this failure, overriding
+                the instance's default status_code.
+            detail: A specific error detail message (string or callable) for this
+                failure, overriding the instance's default error_detail.
+
+        Returns:
+            None
+
+        Raises:
+            HTTPException: Always raises with the resolved status code and detail.
         """
         final_status_code = status_code if status_code is not None else self._status_code
 
@@ -90,6 +102,59 @@ class BaseValidator(abc.ABC):
             final_detail = str(error_source)
 
         raise HTTPException(status_code=final_status_code, detail=final_detail)
+
+    @abc.abstractmethod
+    async def _validate(self, value: Any) -> Any:
+        """
+        Abstract method for pure validation logic.
+
+        Subclasses MUST implement this method to perform the actual
+        validation. This method should raise `ValidationError` if
+        validation fails.
+
+        Args:
+            value: The value to validate.
+
+        Returns:
+            The validated value, which can be of any type depending on the validator.
+        """
+        raise NotImplementedError(
+            "Subclasses of BaseValidator must implement the _validate method."
+        )
+
+    async def _validate_custom(self, value: Any) -> None:
+        """
+        Executes all configured custom validator functions.
+
+        Iterates through the list of custom validators, supporting both
+        synchronous and asynchronous validator functions. Catches exceptions
+        and converts them to ValidationError instances.
+
+        Args:
+            value: The value to validate using custom validators.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If any validator raises an exception or explicitly
+                raises ValidationError.
+        """
+        if self._custom_validators is None:
+            return
+
+        for validator_func in self._custom_validators:
+            try:
+                if inspect.iscoroutinefunction(validator_func):
+                    await validator_func(value)
+                else:
+                    validator_func(value)
+            except ValidationError:
+                raise  # Re-raise explicit validation errors
+            except Exception as e:
+                # Catch any other exception from the validator
+                detail = f"Custom validation failed. Error: {e}"
+                raise ValidationError(detail=detail, status_code=self._status_code)
 
     @abc.abstractmethod
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -111,7 +176,7 @@ class BaseValidator(abc.ABC):
 
             class MyValidator(BaseValidator):
 
-                def _validate_logic(self, token: str) -> None:
+                async def _validate(self, token: str) -> None:
                     # This method is testable without FastAPI
                     if not token.startswith("sk_"):
                         # Raise the logic-level exception
@@ -120,7 +185,8 @@ class BaseValidator(abc.ABC):
                 def __call__(self, x_token: str = Header(...)):
                     try:
                         # 1. Run the pure validation logic
-                        self._validate_logic(x_token)
+                        await self._validate(x_token)
+                        await self._validate_custom(x_token)
                     except ValidationError as e:
                         # 2. Catch logic error and raise HTTP error
                         self._raise_error(

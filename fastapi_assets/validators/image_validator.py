@@ -3,7 +3,7 @@ Module providing the ImageValidator for validating uploaded image files.
 """
 
 from typing import Any, Callable, List, Optional, Union
-from fastapi_assets.core.base_validator import ValidationError
+from fastapi_assets.core import ValidationError
 from fastapi import File, UploadFile
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from fastapi_assets.validators.file_validator import FileValidator
@@ -41,7 +41,7 @@ class ImageValidator(FileValidator):
 
     .. code-block:: python
         from fastapi import FastAPI, UploadFile, Depends
-        from fastapi_assets.validators.image_validator import ImageValidator
+        from fastapi_assets.validators import ImageValidator
 
         app = FastAPI()
 
@@ -149,7 +149,7 @@ class ImageValidator(FileValidator):
                 )
         return parsed
 
-    async def __call__(self, file: UploadFile = File(...), **kwargs: Any) -> StarletteUploadFile:
+    async def __call__(self, file: UploadFile = File(...)) -> StarletteUploadFile:
         """
         FastAPI dependency entry point for image validation.
         Args:
@@ -157,24 +157,9 @@ class ImageValidator(FileValidator):
         Returns:
             The validated UploadFile object.
         """
-        # Run all parent validations (size, content-type, filename)
-        # This will also rewind the file stream to position 0.
-        try:
-            await super().__call__(file, **kwargs)
-        except ValidationError as e:
-            # Re-raise the exception from the parent
-            self._raise_error(status_code=e.status_code, detail=str(e.detail))
 
-        # Run image-specific validations using Pillow
-        img = None
         try:
-            # `file.file` is a SpooledTemporaryFile, which Image.open can read.
-            img = Image.open(file.file)
-
-            # Perform content-based validations
-            self._validate_format(img)
-            self._validate_resolution(img)
-            self._validate_aspect_ratio(img)
+            await self._validate(file)
 
         except (UnidentifiedImageError, IOError) as e:
             # Pillow couldn't identify it as an image, or file is corrupt
@@ -196,23 +181,46 @@ class ImageValidator(FileValidator):
                 detail=f"An unexpected error occurred during image validation: {e}",
             )
         finally:
-            if img:
-                img.close()
-
             # CRITICAL: Rewind the file stream *again* so the endpoint
             # can read it after Pillow is done.
             await file.seek(0)
 
         return file
 
-    def _validate_format(self, img: Image.Image) -> None:
-        """Checks the image's actual format (e.g., 'JPEG', 'PNG').
+    async def _validate(self, file: UploadFile) -> None:
+        """
+        Runs all image validation checks using PIL/Pillow.
+
+        Opens the image file with Pillow and validates its format, resolution,
+        and aspect ratio against the configured constraints.
+
         Args:
-            img: The opened PIL Image object.
+            file: The uploaded image file to validate.
+
         Returns:
             None
+
         Raises:
-            ValidationError: If the image format is not allowed.
+            ValidationError: If any image validation check fails.
+        """
+        await super()._validate(file)
+        img = Image.open(file.file)
+        self._validate_format(img)
+        self._validate_resolution(img)
+        self._validate_aspect_ratio(img)
+
+    def _validate_format(self, img: Image.Image) -> None:
+        """
+        Validates that the image format is in the allowed list.
+
+        Args:
+            img: The opened PIL Image object.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If the image format is not in the allowed list.
         """
         if not self._allowed_formats:
             return  # No rule set
@@ -227,13 +235,19 @@ class ImageValidator(FileValidator):
             raise ValidationError(detail=str(detail), status_code=415)
 
     def _validate_resolution(self, img: Image.Image) -> None:
-        """Checks image dimensions against min, max, and exact constraints.
+        """
+        Validates the image's resolution against min, max, and exact constraints.
+
+        Checks that the image width and height meet the configured constraints.
+
         Args:
             img: The opened PIL Image object.
+
         Returns:
             None
+
         Raises:
-            ValidationError: If the image resolution is out of bounds
+            ValidationError: If the image resolution does not meet constraints.
         """
         if not (self._min_resolution or self._max_resolution or self._exact_resolution):
             return  # No resolution rules set
@@ -265,13 +279,20 @@ class ImageValidator(FileValidator):
             raise ValidationError(detail=str(detail), status_code=400)
 
     def _validate_aspect_ratio(self, img: Image.Image) -> None:
-        """Checks the image's aspect ratio against a list of allowed ratios.
+        """
+        Validates that the image's aspect ratio is in the allowed list.
+
+        Compares the actual aspect ratio against configured allowed ratios with
+        a tolerance for floating-point precision.
+
         Args:
             img: The opened PIL Image object.
+
         Returns:
             None
+
         Raises:
-            ValidationError: If the image's aspect ratio is not allowed.
+            ValidationError: If the image aspect ratio is not allowed or cannot be calculated.
         """
         if not self._aspect_ratios:
             return  # No rule set
