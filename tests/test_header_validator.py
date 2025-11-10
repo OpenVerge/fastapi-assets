@@ -63,7 +63,7 @@ class TestHeaderValidatorInit:
         validator = HeaderValidator()
         assert validator._allowed_values is None
         assert validator._pattern_str is None
-        assert validator._custom_validators is None
+        assert validator._custom_validators == []
 
     def test_init_pattern_compilation(self):
         """Tests that pattern is compiled to regex."""
