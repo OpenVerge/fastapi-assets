@@ -3,11 +3,8 @@
 import inspect
 import re
 from typing import Any, Callable, Dict, List, Optional, Union
-
 from fastapi import Request, status
-
-from fastapi_assets.core.base_validator import BaseValidator
-from fastapi_assets.core.exceptions import ValidationError
+from fastapi_assets.core import BaseValidator, ValidationError
 
 
 # Pre-built regex patterns for the `format` parameter
@@ -20,7 +17,7 @@ PRE_BUILT_PATTERNS: Dict[str, str] = {
 }
 
 
-class CookieAssert(BaseValidator):
+class CookieValidator(BaseValidator):
     """
     A class-based dependency to validate FastAPI Cookies with granular control.
 
@@ -31,22 +28,27 @@ class CookieAssert(BaseValidator):
     Example:
         ```python
         from fastapi import FastAPI, Depends
+        from fastapi_assets.core import ValidationError
+        from fastapi_assets.request_validators import CookieValidator
 
         app = FastAPI()
 
-        def is_whitelisted(user_id: str) -> bool:
-            # Logic to check if user_id is in a whitelist
-            return user_id in {"user_1", "user_2"}
+        def is_whitelisted(user_id: str) -> None:
+            # Logic to check if user_id is in a whitelist.
+            # Custom validators must raise ValidationError on failure.
+            if user_id not in {"user_1", "user_2"}:
+                raise ValidationError("User is not whitelisted.")
 
-        validate_session = CookieAssert(
-            "session-id", # This is the required 'alias'
+        # Create validators that will extract cookies from the incoming request
+        validate_session = CookieValidator(
+            "session-id",  # Cookie name to extract from request.cookies
             format="uuid4",
             on_required_error_detail="Invalid or missing session ID.",
             on_pattern_error_detail="Session ID must be a valid UUIDv4."
         )
 
-        validate_user = CookieAssert(
-            "user-id",
+        validate_user = CookieValidator(
+            "user-id",  # Cookie name to extract from request.cookies
             min_length=6,
             validators=[is_whitelisted],
             on_length_error_detail="User ID must be at least 6 characters.",
@@ -55,10 +57,14 @@ class CookieAssert(BaseValidator):
 
         @app.get("/items/")
         async def read_items(session_id: str = Depends(validate_session)):
+            # validate_session extracts the "session-id" cookie from the request,
+            # validates it, and returns the validated value
             return {"session_id": session_id}
 
         @app.get("/users/me")
         async def read_user(user_id: str = Depends(validate_user)):
+            # validate_user extracts the "user-id" cookie from the request,
+            # validates it (including length and custom validators), and returns it
             return {"user_id": user_id}
         ```
     """
@@ -80,7 +86,7 @@ class CookieAssert(BaseValidator):
         regex: Optional[str] = None,
         pattern: Optional[str] = None,
         format: Optional[str] = None,
-        validators: Optional[List[Callable[[Any], bool]]] = None,
+        validators: Optional[List[Callable[[Any], Any]]] = None,
         # Granular Error Messages
         on_required_error_detail: str = "Cookie is required.",
         on_numeric_error_detail: str = "Cookie value must be a number.",
@@ -89,7 +95,7 @@ class CookieAssert(BaseValidator):
         on_pattern_error_detail: str = "Cookie has an invalid format.",
         on_validator_error_detail: str = "Cookie failed custom validation.",
         # Base Error
-        status_code: int = status.HTTP_400_BAD_REQUEST,
+        status_code: int = 400,
         error_detail: str = "Cookie validation failed.",
     ) -> None:
         """
@@ -126,7 +132,7 @@ class CookieAssert(BaseValidator):
             ValueError: If `regex`/`pattern` and `format` are used simultaneously.
             ValueError: If an unknown `format` key is provided.
         """
-        super().__init__(status_code=status_code, error_detail=error_detail)
+        super().__init__(status_code=status_code, error_detail=error_detail, validators=validators)
 
         # Store Core Parameters
         self.alias = alias
@@ -158,21 +164,16 @@ class CookieAssert(BaseValidator):
         # Handle Regex/Pattern
         self.final_regex_str: Optional[str] = regex or pattern
         if self.final_regex_str and format:
-            raise ValueError(
-                "Cannot use 'regex'/'pattern' and 'format' simultaneously."
-            )
+            raise ValueError("Cannot use 'regex'/'pattern' and 'format' simultaneously.")
         if format:
             if format not in PRE_BUILT_PATTERNS:
                 raise ValueError(
-                    f"Unknown format: '{format}'. "
-                    f"Available: {list(PRE_BUILT_PATTERNS.keys())}"
+                    f"Unknown format: '{format}'. Available: {list(PRE_BUILT_PATTERNS.keys())}"
                 )
             self.final_regex_str = PRE_BUILT_PATTERNS[format]
 
         self.final_regex: Optional[re.Pattern[str]] = (
-            re.compile(self.final_regex_str)
-            if self.final_regex_str
-            else None
+            re.compile(self.final_regex_str) if self.final_regex_str else None
         )
 
     def _validate_numeric(self, value: str) -> Optional[float]:
@@ -180,7 +181,11 @@ class CookieAssert(BaseValidator):
         Tries to convert value to float. Returns float or None.
 
         This check is only triggered if gt, ge, lt, or le are set.
-
+        Args:
+            value (str): The cookie value to convert.
+        Returns:
+            Optional[float]: The converted float value, or None if numeric checks
+                             are not applicable.
         Raises:
             ValidationError: If conversion to float fails.
         """
@@ -198,6 +203,10 @@ class CookieAssert(BaseValidator):
         """
         Checks gt, ge, lt, le rules against a numeric value.
 
+        Args:
+            value (float): The numeric value to compare.
+        Returns:
+            None
         Raises:
             ValidationError: If any comparison fails.
         """
@@ -226,6 +235,12 @@ class CookieAssert(BaseValidator):
         """
         Checks min_length and max_length rules.
 
+        Args:
+            value (str): The cookie value to check.
+
+        Returns:
+            None
+
         Raises:
             ValidationError: If length constraints fail.
         """
@@ -244,6 +259,10 @@ class CookieAssert(BaseValidator):
     def _validate_pattern(self, value: str) -> None:
         """
         Checks regex/format pattern rule.
+        Args:
+            value (str): The cookie value to check.
+        Returns:
+            None
 
         Raises:
             ValidationError: If the regex pattern does not match.
@@ -254,43 +273,7 @@ class CookieAssert(BaseValidator):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-    async def _validate_custom(self, value: str) -> None:
-        """
-        Runs all custom validator functions (sync or async).
-
-        Raises:
-            ValidationError: If any function returns False or raises an Exception.
-        """
-        if not self.custom_validators:
-            return
-
-        for validator_func in self.custom_validators:
-            try:
-                is_valid = None
-                # Handle both sync and async validators
-                if inspect.iscoroutinefunction(validator_func):
-                    is_valid = await validator_func(value)
-                else:
-                    is_valid = validator_func(value)
-
-                if not is_valid:
-                    raise ValidationError(
-                        detail=self.err_validator,
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                    )
-            except ValidationError:
-                # Re-raise our own validation errors
-                raise
-            except Exception as e:
-                # Validator function raising an error is a validation failure
-                raise ValidationError(
-                    detail=f"{self.err_validator}: {e}",
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-
-    async def _validate_logic(
-        self, cookie_value: Optional[str]
-    ) -> Union[float, str, None]:
+    async def _validate(self, cookie_value: Optional[str]) -> Union[float, str, None]:
         """
         Pure validation logic (testable without FastAPI).
 
@@ -355,9 +338,8 @@ class CookieAssert(BaseValidator):
         try:
             # Extract cookie value from request
             cookie_value: Optional[str] = request.cookies.get(self.alias)
-
             # Run all validation logic
-            return await self._validate_logic(cookie_value)
+            return await self._validate(cookie_value)
 
         except ValidationError as e:
             # Convert validation error to HTTP exception

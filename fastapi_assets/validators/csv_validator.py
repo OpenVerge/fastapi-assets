@@ -5,7 +5,7 @@ from fastapi import File, UploadFile
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
 # Import from base file_validator module
-from fastapi_assets.core.base_validator import ValidationError
+from fastapi_assets.core import ValidationError
 from fastapi_assets.validators.file_validator import (
     FileValidator,
 )
@@ -29,7 +29,7 @@ class CSVValidator(FileValidator):
 
     .. code-block:: python
         from fastapi import FastAPI, UploadFile, Depends
-        from fastapi_assets.validators.csv_validator import CSVValidator
+        from fastapi_assets.validators import CSVValidator
 
         app = FastAPI()
 
@@ -121,7 +121,7 @@ class CSVValidator(FileValidator):
         self._row_error_detail = on_row_error_detail
         self._parse_error_detail = on_parse_error_detail
 
-    async def __call__(self, file: UploadFile = File(...), **kwargs: Any) -> StarletteUploadFile:
+    async def __call__(self, file: UploadFile = File(...)) -> StarletteUploadFile:
         """
         FastAPI dependency entry point for CSV validation.
 
@@ -137,35 +137,66 @@ class CSVValidator(FileValidator):
         # Run all parent validations (size, content-type, filename)
         # This will also rewind the file (await file.seek(0))
         try:
-            await super().__call__(file, **kwargs)
-        except ValidationError as e:
-            # Re-raise parent's validation error
-            self._raise_error(status_code=e.status_code, detail=str(e.detail))
-
-        # File is validated by parent and rewound. Start CSV checks.
-        try:
-            # Check encoding if specified
-            await self._validate_encoding(file)
-            await file.seek(0)  # Rewind after encoding check
-
-            # Check columns and row counts
-            await self._validate_csv_structure(file)
-
+            await self._validate(file=file)
         except ValidationError as e:
             await file.close()
+            # Re-raise parent's validation error
             self._raise_error(status_code=e.status_code, detail=str(e.detail))
         except Exception as e:
             # Catch pandas errors (e.g., CParserError, UnicodeDecodeError)
             await file.close()
             detail = self._parse_error_detail or f"Failed to parse CSV file: {e}"
             self._raise_error(status_code=400, detail=detail)
+        try:
+            # CRITICAL: Rewind the file AGAIN so the endpoint can read it.
+            await file.seek(0)
+            return file
+        except Exception as e:
+            await file.close()
+            self._raise_error(
+                status_code=e.status_code if hasattr(e, "status_code") else 400,
+                detail="File could not be rewound after validation.",
+            )
+            return None  # type: ignore  # pragma: no cover
 
-        # CRITICAL: Rewind the file AGAIN so the endpoint can read it.
+    async def _validate(self, file: UploadFile) -> None:
+        """
+        Runs all CSV-specific validation checks on the uploaded file.
+
+        This method orchestrates the validation pipeline: first calls parent
+        FileValidator validations, then validates encoding, and finally
+        validates the CSV structure (columns and rows).
+
+        Args:
+            file: The uploaded file to validate.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If any validation check fails.
+        """
+        await super()._validate(file)
+        await self._validate_encoding(file)
         await file.seek(0)
-        return file
+        await self._validate_csv_structure(file)
 
     async def _validate_encoding(self, file: UploadFile) -> None:
-        """Checks if the file encoding matches one of the allowed encodings."""
+        """
+        Validates that the file encoding matches one of the allowed encodings.
+
+        Reads a small chunk of the file and attempts to decode it with each
+        specified encoding. If none match, raises a ValidationError.
+
+        Args:
+            file: The uploaded file to validate.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If the file encoding is not one of the allowed encodings.
+        """
         if not self._encoding:
             return  # No check needed
 
@@ -190,13 +221,22 @@ class CSVValidator(FileValidator):
             raise ValidationError(detail=str(detail), status_code=400)
 
     def _check_columns(self, header: List[str]) -> None:
-        """Validates the CSV header against column rules.
+        """
+        Validates the CSV header against configured column rules.
+
+        Checks for required columns, disallowed columns, and exact column matching
+        based on the validator's configuration. Raises ValidationError if any
+        rule is violated.
+
         Args:
-            header: List of column names from the CSV header.
+            header: List of column names extracted from the CSV header row.
+
         Returns:
             None
+
         Raises:
-            ValidationError: If any column validation fails.
+            ValidationError: If exact columns don't match, required columns are missing,
+                or disallowed columns are present.
         """
         header_set = set(header)
 
@@ -229,7 +269,22 @@ class CSVValidator(FileValidator):
                 raise ValidationError(detail=str(detail), status_code=400)
 
     def _check_row_counts(self, total_rows: int) -> None:
-        """Validates the total row count against min/max rules."""
+        """
+        Validates that the CSV row count meets min/max constraints.
+
+        Compares the actual number of data rows against the configured
+        minimum and maximum row limits. Raises ValidationError if constraints
+        are violated.
+
+        Args:
+            total_rows: The total number of data rows (excluding header) in the CSV.
+
+        Returns:
+            None
+
+        Raises:
+            ValidationError: If the row count is below minimum or exceeds maximum.
+        """
         if self._min_rows is not None and total_rows < self._min_rows:
             detail = self._row_error_detail or (
                 f"File does not meet minimum required rows: {self._min_rows}. Found: {total_rows}."
@@ -244,16 +299,21 @@ class CSVValidator(FileValidator):
 
     async def _validate_csv_structure(self, file: UploadFile) -> None:
         """
-        Validates the CSV columns and row counts using pandas.
+        Validates the CSV structure including columns and row counts using pandas.
 
-        Uses either an efficient bounded read (header_check_only=True)
-        or a full stream (header_check_only=False) for row counts.
+        This method handles both efficient bounded reads (checking only necessary rows)
+        and full file reads depending on the `header_check_only` setting. It validates
+        column constraints first, then row count constraints if applicable.
+
         Args:
             file: The uploaded CSV file to validate.
+
         Returns:
             None
+
         Raises:
-            ValidationError: If any structure validation fails.
+            ValidationError: If column validation fails, row count validation fails,
+                or if the file cannot be parsed as valid CSV.
         """
         # file.file is the underlying SpooledTemporaryFile
         file_obj = file.file

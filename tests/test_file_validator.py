@@ -37,7 +37,7 @@ def mock_upload_file() -> MagicMock:
     return file
 
 
-# --- Test Cases ---
+#  Test Cases
 
 
 @pytest.mark.asyncio
@@ -122,7 +122,7 @@ class TestFileValidatorCall:
 
         with pytest.raises(HTTPException) as exc_info:
             await validator(mock_upload_file)
-        print(exc_info)
+
         assert exc_info.value.status_code == 415
         assert "unsupported media type" in exc_info.value.detail
 

@@ -1,10 +1,12 @@
 """HeaderValidator for validating HTTP headers in FastAPI."""
 
+from inspect import Signature, Parameter
 import re
-from typing import Any, Callable, Dict, List, Optional, Union, Pattern
-from fastapi_assets.core.base_validator import BaseValidator, ValidationError
+from typing import Any, Callable, Dict, List, Optional, Pattern
 from fastapi import Header
 from fastapi.param_functions import _Unset
+
+from fastapi_assets.core import BaseValidator, ValidationError
 
 Undefined = _Unset
 
@@ -22,62 +24,83 @@ _FORMAT_PATTERNS: Dict[str, str] = {
 
 class HeaderValidator(BaseValidator):
     r"""
-    A general-purpose dependency for validating HTTP request headers in FastAPI.
+    A dependency for validating HTTP headers with extended rules.
 
-    It extends FastAPI's built-in Header with additional validation capabilities
-    including pattern matching, format validation, allowed values, and custom validators.
+    Extends FastAPI's `Header` with pattern matching, format validation,
+    allowed values, and custom validators, providing granular error control.
 
+    Example:
     .. code-block:: python
-        from fastapi import FastAPI
-        from fastapi_assets.request_validators.header_validator import HeaderValidator
+        from fastapi import FastAPI, Depends
+        from fastapi_assets.request_validators import HeaderValidator
 
         app = FastAPI()
 
-        # Validate API key header with pattern
+        def is_valid_api_version(version: str) -> bool:
+            # Custom validators must raise ValidationError on failure
+            if version not in ["v1", "v2", "v3"]:
+                raise ValidationError(detail="Unsupported API version.")
+
+        # Validate required API key header with a specific pattern.
+        # HeaderValidator extracts the header from the incoming request automatically.
         api_key_validator = HeaderValidator(
             alias="X-API-Key",
             pattern=r"^[a-zA-Z0-9]{32}$",
-            required=True,
-            on_error_detail="Invalid API key format"
+            on_required_error_detail="X-API-Key header is missing.",
+            on_pattern_error_detail="Invalid API key format."
         )
 
-        # Validate authorization header with bearer token format
+        # Validate required authorization header with bearer token format.
+        # The header is extracted from request.headers by the Header() dependency.
         auth_validator = HeaderValidator(
             alias="Authorization",
             format="bearer_token",
-            required=True
+            on_required_error_detail="Authorization header is required.",
+            on_pattern_error_detail="Invalid Bearer token format."
         )
 
-        # Validate custom header with allowed values
+        # Validate optional custom header with custom validator and a default.
+        # If not provided, the default value "v1" will be used.
         version_validator = HeaderValidator(
             alias="X-API-Version",
-            allowed_values=["v1", "v2", "v3"],
-            required=False,
-            default="v1"
+            default="v1",
+            validators=[is_valid_api_version],
+            on_custom_validator_error_detail="Invalid API version."
         )
 
         @app.get("/secure")
-        def secure_endpoint(
-            api_key: str = api_key_validator,
-            auth: str = auth_validator,
-            version: str = version_validator
+        async def secure_endpoint(
+            api_key: str = Depends(api_key_validator),
+            auth: str = Depends(auth_validator),
+            version: str = Depends(version_validator)
         ):
+            # Each dependency automatically extracts and validates the corresponding header,
+            # returning the validated value to the endpoint
             return {"message": "Access granted", "version": version}
+        ```
     """
 
     def __init__(
         self,
         default: Any = Undefined,
         *,
-        required: Optional[bool] = True,
         alias: Optional[str] = None,
         convert_underscores: bool = True,
         pattern: Optional[str] = None,
         format: Optional[str] = None,
         allowed_values: Optional[List[str]] = None,
-        validator: Optional[Callable[[str], bool]] = None,
+        validators: Optional[List[Callable[[Any], Any]]] = None,
+        # Standard Header parameters
         title: Optional[str] = None,
         description: Optional[str] = None,
+        # Granular Error Messages
+        on_required_error_detail: str = "Required header is missing.",
+        on_pattern_error_detail: str = "Header has an invalid format.",
+        on_allowed_values_error_detail: str = "Header value is not allowed.",
+        on_custom_validator_error_detail: str = "Header failed custom validation.",
+        # Base Error
+        status_code: int = 400,
+        error_detail: str = "Header Validation Failed",
         **header_kwargs: Any,
     ) -> None:
         """
@@ -85,73 +108,71 @@ class HeaderValidator(BaseValidator):
 
         Args:
             default (Any): The default value if the header is not provided.
-            required Optional[bool]: Explicitly set if the header is not required.
-            alias (Optional[str]): The alias of the header. This is the actual
-                header name (e.g., "X-API-Key").
+                If not set (or set to `Undefined`), the header is required.
+            alias (Optional[str]): The alias of the header (the actual
+                header name, e.g., "X-API-Key").
             convert_underscores (bool): If `True` (default), underscores in
                 the variable name will be converted to hyphens in the header name.
             pattern (Optional[str]): A regex pattern string that the header
                 value must match.
-            format (Optional[str]): A predefined format name (e.g., "uuid4",
-                "email", "bearer_token") that the header value must match.
+            format (Optional[str]): A predefined format name (e.g., "uuid4").
                 Cannot be used with `pattern`.
             allowed_values (Optional[List[str]]): A list of exact string
                 values that are allowed for the header.
-            validator (Optional[Callable[[str], bool]]): A custom callable that
-                receives the header value and returns `True` if valid, or
-                `False` (or raises an Exception) if invalid.
+            validators (Optional[List[Callable]]): A list of custom validation
+                functions (sync or async) that receive the header value.
             title (Optional[str]): A title for the header in OpenAPI docs.
             description (Optional[str]): A description for the header in
                 OpenAPI docs.
-            **header_kwargs (Any): Additional keyword arguments passed to the
-                parent `BaseValidator` (for error handling) and the
-                underlying `fastapi.Header` dependency.
-                Includes `status_code` (default 400) and `error_detail`
-                (default "Header Validation Failed") for error responses.
-
-        Raises:
-            ValueError: If both `pattern` and `format` are specified, or if
-                an unknown `format` name is provided.
+            on_required_error_detail (str): Error message if header is missing.
+            on_pattern_error_detail (str): Error message if pattern/format fails.
+            on_allowed_values_error_detail (str): Error message if value not allowed.
+            on_custom_validator_error_detail (str): Error message if custom validator fails.
+            status_code (int): The default HTTP status code for validation errors.
+            error_detail (str): A generic fallback error message.
+            **header_kwargs (Any): Additional keyword arguments passed to FastAPI's Header().
         """
-        header_kwargs["status_code"] = header_kwargs.get("status_code", 400)
-        header_kwargs["error_detail"] = header_kwargs.get(
-            "error_detail", "Header Validation Failed"
-        )
-        # Call super() with default error handling
-        super().__init__(**header_kwargs)
 
-        self._required = required
+        super().__init__(status_code=status_code, error_detail=error_detail, validators=validators)
+
+        # Store "required" status based on the default value
+        self._is_required = default is Undefined
 
         # Store validation rules
         self._allowed_values = allowed_values
-        self._custom_validator = validator
+        self._custom_validators: list[Callable[..., Any]] = validators or []
 
-        # Define type hints for attributes
-        self._pattern: Optional[Pattern[str]] = None
-        self._format_name: Optional[str] = None
+        # Store error messages
+        self._on_required_error_detail = on_required_error_detail
+        self._on_pattern_error_detail = on_pattern_error_detail
+        self._on_allowed_values_error_detail = on_allowed_values_error_detail
+        self._on_custom_validator_error_detail = on_custom_validator_error_detail
 
-        # Handle pattern and format keys
+        self._pattern_str: Optional[str] = None
+        self._compiled_pattern: Optional[Pattern[str]] = None
+
         if pattern and format:
-            raise ValueError("Cannot specify both 'pattern' and 'format'. Choose one.")
+            raise ValueError("Cannot specify both 'pattern' and 'format'.")
 
         if format:
-            if format not in _FORMAT_PATTERNS:
+            self._pattern_str = _FORMAT_PATTERNS.get(format)
+            if self._pattern_str is None:
                 raise ValueError(
-                    f"Unknown format '{format}'. "
-                    f"Available formats: {', '.join(_FORMAT_PATTERNS.keys())}"
+                    f"Unknown format '{format}'. Available: {list(_FORMAT_PATTERNS.keys())}"
                 )
-            self._pattern = re.compile(_FORMAT_PATTERNS[format], re.IGNORECASE)
-            self._format_name = format
+            # Use IGNORECASE for format matching (e.g., UUIDs)
+            self._compiled_pattern = re.compile(self._pattern_str, re.IGNORECASE)
         elif pattern:
-            self._pattern = re.compile(pattern)
-            self._format_name = None
-        else:
-            self._pattern = None
-            self._format_name = None
+            self._pattern_str = pattern
+            self._compiled_pattern = re.compile(self._pattern_str)
 
-        # Store the underlying FastAPI Header parameter
+        # We pass `None` if the header is required (default=Undefined)
+        # to bypass FastAPI's default 422, allowing our validator to run
+        # and use the custom error message.
+        fastapi_header_default = None if self._is_required else default
+
         self._header_param = Header(
-            default,
+            fastapi_header_default,
             alias=alias,
             convert_underscores=convert_underscores,
             title=title,
@@ -159,57 +180,94 @@ class HeaderValidator(BaseValidator):
             **header_kwargs,
         )
 
-    def __call__(self, header_value: Optional[str] = None) -> Any:
+        # Dynamically set the __call__ method's signature so FastAPI recognizes
+        # the Header() dependency and injects the header value correctly.
+        # This is necessary because we need to pass self._header_param as the default,
+        # which isn't available at class definition time.
+        self._set_call_signature()
+
+    def _set_call_signature(self) -> None:
+        """
+        Sets the __call__ method's signature so FastAPI's dependency injection
+        system recognizes the Header() parameter and extracts the header value.
+        """
+
+        # Create a new signature with self and header_value parameters
+        # The header_value parameter has self._header_param as its default
+        # so FastAPI will use Header() to extract it from the request
+        sig = Signature(
+            [
+                Parameter("self", Parameter.POSITIONAL_OR_KEYWORD),
+                Parameter(
+                    "header_value",
+                    Parameter.KEYWORD_ONLY,
+                    default=self._header_param,
+                    annotation=Optional[str],
+                ),
+            ]
+        )
+
+        # Set the signature on the underlying function, not the bound method
+        # Access the function object from the method
+        self.__call__.__func__.__signature__ = sig  # type: ignore
+
+    async def __call__(self, header_value: Optional[str] = None) -> Optional[str]:
         """
         FastAPI dependency entry point for header validation.
 
-        Args:
-            header_value: The header value extracted from the request.
-
-        Returns:
-            The validated header value.
-
-        Raises:
-            HTTPException: If validation fails.
-        """
-        # If value is None, return a dependency that FastAPI will use
-        if header_value is None:
-
-            def dependency(value: Optional[str] = self._header_param) -> Optional[str]:
-                return self._validate(value)
-
-            return dependency
-
-        # If value is provided (for testing), validate directly
-        return self._validate(header_value)
-
-    def _validate(self, value: Optional[str]) -> Optional[str]:
-        """
-        Runs all validation checks on the header value.
+        FastAPI automatically injects the header value by recognizing the
+        Header() dependency in the method signature (set via _set_call_signature).
+        This method then validates the extracted header value and returns it
+        or raises an HTTPException with a custom error message.
 
         Args:
-            value: The header value to validate.
+            header_value: The header value extracted from the request by FastAPI.
+                         Will be None if the header is not present.
 
         Returns:
-            The validated value.
+            Optional[str]: The validated header value, or None if the header is
+                          optional and not present.
 
         Raises:
-            HTTPException: If any validation check fails.
+            HTTPException: If validation fails, with the configured status code
+                          and error message.
         """
         try:
-            self._validate_required(value)
+            # Validate the header value (which FastAPI injected via Header())
+            return await self._validate(header_value)
         except ValidationError as e:
-            self._raise_error(value=value, status_code=e.status_code, detail=str(e.detail))
-        if value is None or value == "":
-            return value or ""
-        try:
-            self._validate_allowed_values(value)
-            self._validate_pattern(value)
-            self._validate_custom(value)
+            # Convert our internal error to an HTTPException
+            self._raise_error(status_code=e.status_code, detail=str(e.detail))
+            return None  # pragma: no cover (unreachable)
 
-        except ValidationError as e:
-            # Convert ValidationError to HTTPException
-            self._raise_error(value=value, status_code=e.status_code, detail=str(e.detail))
+    async def _validate(self, value: Optional[str]) -> Optional[str]:
+        """
+        Runs all configured validation checks on the header value.
+
+        Checks if the header is required, validates allowed values, pattern matching,
+        and custom validators in sequence.
+
+        Args:
+            value: The header value to validate (None if not present).
+
+        Returns:
+            Optional[str]: The validated header value, or None if optional and not present.
+
+        Raises:
+            ValidationError: If any validation check fails.
+        """
+        # 1. Check if required and not present
+        self._validate_required(value)
+
+        # 2. If optional and not present, return None
+        # (It passed _validate_required, so if value is None, it's optional)
+        if value is None:
+            return None
+
+        # 3. Run all other validations on the present value
+        self._validate_allowed_values(value)
+        self._validate_pattern(value)
+        await self._validate_custom(value)
 
         return value
 
@@ -218,81 +276,59 @@ class HeaderValidator(BaseValidator):
         Checks if the header is present when required.
 
         Args:
-            value: The header value to check.
+            value: The header value (None if not present).
+
+        Returns:
+            None
 
         Raises:
-            ValidationError: If the header is required but missing.
+            ValidationError: If the header is required but missing or empty.
         """
-        if self._required and (value is None or value == ""):
-            detail = "Required header is missing."
-            if callable(detail):
-                detail_str = detail(value)
-            else:
-                detail_str = str(detail)
-
-            raise ValidationError(detail=detail_str, status_code=400)
+        if self._is_required and (value is None or value == ""):
+            raise ValidationError(
+                detail=self._on_required_error_detail, status_code=self._status_code
+            )
 
     def _validate_allowed_values(self, value: str) -> None:
         """
-        Checks if the value is in the list of allowed values.
+        Checks if the header value is in the list of allowed values.
 
         Args:
-            value: The header value to check.
+            value: The header value to validate.
+
+        Returns:
+            None
 
         Raises:
-            ValidationError: If the value is not in allowed_values.
+            ValidationError: If the value is not in the allowed list.
         """
         if self._allowed_values is None:
-            return  # No validation rule set
+            return
 
         if value not in self._allowed_values:
             detail = (
-                f"Header value '{value}' is not allowed. "
+                f"{self._on_allowed_values_error_detail} "
                 f"Allowed values are: {', '.join(self._allowed_values)}"
             )
-            raise ValidationError(detail=detail, status_code=400)
+            raise ValidationError(detail=detail, status_code=self._status_code)
 
     def _validate_pattern(self, value: str) -> None:
         """
-        Checks if the header value matches the required regex pattern.
+        Checks if the header value matches the configured regex pattern.
 
         Args:
-            value: The header value to check.
+            value: The header value to validate.
+
+        Returns:
+            None
 
         Raises:
             ValidationError: If the value doesn't match the pattern.
         """
-        if self._pattern is None:
-            return  # No validation rule set
+        if self._compiled_pattern is None:
+            return
 
-        if not self._pattern.match(value):
-            if self._format_name:
-                detail = f"Header value does not match the required format: '{self._format_name}'"
-            else:
-                detail = (
-                    f"Header value '{value}' does not match the required pattern: "
-                    f"{self._pattern.pattern}"
-                )
-            raise ValidationError(detail=detail, status_code=400)
-
-    def _validate_custom(self, value: str) -> None:
-        """
-        Runs a custom validation function if provided.
-
-        Args:
-            value: The header value to check.
-
-        Raises:
-            ValidationError: If the custom validator returns False or raises an exception.
-        """
-        if self._custom_validator is None:
-            return  # No custom validator set
-
-        try:
-            if not self._custom_validator(value):
-                detail = f"Custom validation failed for header value '{value}'"
-                raise ValidationError(detail=detail, status_code=400)
-        except Exception as e:
-            # If the validator itself raises an exception, catch it
-            detail = f"Custom validation error: {str(e)}"
-            raise ValidationError(detail=detail, status_code=400)
+        if not self._compiled_pattern.fullmatch(value):
+            raise ValidationError(
+                detail=self._on_pattern_error_detail, status_code=self._status_code
+            )
