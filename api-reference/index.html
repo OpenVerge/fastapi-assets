@@ -1,0 +1,1501 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A validation and assertion toolkit for FastAPI file uploads and request metadata.">
+      
+      
+        <meta name="author" content="FastAPI Assets Team">
+      
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../examples/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>API Reference - FastAPI Assets Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="FastAPI Assets Documentation" class="md-header__button md-logo" aria-label="FastAPI Assets Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            FastAPI Assets Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/openverge/fastapi-assets" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="FastAPI Assets Documentation" class="md-nav__button md-logo" aria-label="FastAPI Assets Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    FastAPI Assets Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/openverge/fastapi-assets" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Module
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Module">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basevalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      BaseValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_raise_error" class="md-nav__link">
+    <span class="md-ellipsis">
+      _raise_error()
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validationerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      ValidationError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-validators" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Validators
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Validators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filevalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      FileValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FileValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-definition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameters_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#size-format-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Size Format Support
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mime-type-wildcards" class="md-nav__link">
+    <span class="md-ellipsis">
+      MIME Type Wildcards
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imagevalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      ImageValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ImageValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Formats
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csvvalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      CSVValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CSVValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-validators" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Validators
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Request Validators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#queryvalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      QueryValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QueryValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#headervalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      HeaderValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HeaderValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-definition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameters_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cookievalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      CookieValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CookieValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pathvalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      PathValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PathValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exceptions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exceptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validationerror_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      ValidationError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CODE_OF_CONDUCT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Code of Conduct
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_validators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom Validators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Module
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Module">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basevalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      BaseValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-definition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_raise_error" class="md-nav__link">
+    <span class="md-ellipsis">
+      _raise_error()
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validationerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      ValidationError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-validators" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Validators
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Validators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filevalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      FileValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FileValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-definition_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameters_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#size-format-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      Size Format Support
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mime-type-wildcards" class="md-nav__link">
+    <span class="md-ellipsis">
+      MIME Type Wildcards
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imagevalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      ImageValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ImageValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Formats
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csvvalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      CSVValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CSVValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-validators" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Validators
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Request Validators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#queryvalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      QueryValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="QueryValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#headervalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      HeaderValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HeaderValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-definition_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Definition
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameters_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cookievalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      CookieValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CookieValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pathvalidator" class="md-nav__link">
+    <span class="md-ellipsis">
+      PathValidator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PathValidator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parameters_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exceptions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exceptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validationerror_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      ValidationError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="api-reference">API Reference</h1>
+<p>Complete API documentation for FastAPI Assets validators and utilities.</p>
+<h2 id="core-module">Core Module</h2>
+<h3 id="basevalidator">BaseValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.core.base_validator</code></p>
+<p>Abstract base class for all validators in FastAPI Assets. Provides standardized error handling and HTTP exception raising.</p>
+<h4 id="class-definition">Class Definition</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">BaseValidator</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABC</span><span class="p">):</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for creating reusable FastAPI validation dependencies.&quot;&quot;&quot;</span>
+</code></pre></div>
+<h4 id="parameters">Parameters</h4>
+<ul>
+<li><strong>status_code</strong> (int, default: 400): HTTP status code to return on validation failure</li>
+<li><strong>error_detail</strong> (Union[str, Callable], default: "Validation failed."): Error message or callable that generates error messages</li>
+<li><strong>validators</strong> (Optional[List[Callable]], default: None): List of custom validation functions</li>
+</ul>
+<h4 id="methods">Methods</h4>
+<h5 id="_raise_error"><code>_raise_error()</code></h5>
+<p>Raises a standardized HTTPException with resolved error detail.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">_raise_error</span><span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">status_code</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">detail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Raises HTTPException with validated error message.&quot;&quot;&quot;</span>
+</code></pre></div>
+<p><strong>Parameters</strong>:
+- <code>value</code>: The value that failed validation
+- <code>status_code</code>: Override default status code
+- <code>detail</code>: Override default error detail</p>
+<p><strong>Raises</strong>: <code>HTTPException</code> with resolved status code and detail</p>
+<hr />
+<h3 id="validationerror">ValidationError</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.core.exceptions</code></p>
+<p>Custom exception raised by validators during validation logic.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ValidationError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Raised when validation logic fails.&quot;&quot;&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="n">detail</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="n">status_code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">400</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="p">):</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">detail</span> <span class="o">=</span> <span class="n">detail</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status_code</span>
+</code></pre></div>
+<hr />
+<h2 id="file-validators">File Validators</h2>
+<h3 id="filevalidator">FileValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.validators.file_validator</code></p>
+<p>General-purpose validator for file uploads with size, MIME type, and filename validation.</p>
+<h4 id="class-definition_1">Class Definition</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">FileValidator</span><span class="p">(</span><span class="n">BaseValidator</span><span class="p">):</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validates UploadFile objects for size, MIME type, and filename patterns.&quot;&quot;&quot;</span>
+</code></pre></div>
+<h4 id="parameters_1">Parameters</h4>
+<ul>
+<li><strong>max_size</strong> (Optional[Union[str, int]], default: None): Maximum file size (e.g., "10MB", 1024)</li>
+<li><strong>min_size</strong> (Optional[Union[str, int]], default: None): Minimum file size (e.g., "1KB")</li>
+<li><strong>content_types</strong> (Optional[List[str]], default: None): Allowed MIME types with wildcard support</li>
+<li><strong>filename_pattern</strong> (Optional[str], default: None): Regex pattern for filename validation</li>
+<li><strong>on_size_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom error message for size validation</li>
+<li><strong>on_type_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom error message for content type</li>
+<li><strong>on_filename_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom error message for filename</li>
+<li><strong>status_code</strong> (int, default: 400): HTTP status code on validation failure</li>
+<li><strong>error_detail</strong> (Union[str, Callable], default: "Validation failed"): Default error message</li>
+<li><strong>validators</strong> (Optional[List[Callable]], default: None): List of custom validators</li>
+</ul>
+<h4 id="size-format-support">Size Format Support</h4>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Example</th>
+<th>Bytes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bytes</td>
+<td><code>"1024"</code> or <code>"1024B"</code></td>
+<td>1024</td>
+</tr>
+<tr>
+<td>Kilobytes</td>
+<td><code>"5KB"</code> or <code>"5 KB"</code></td>
+<td>5120</td>
+</tr>
+<tr>
+<td>Megabytes</td>
+<td><code>"10MB"</code> or <code>"10 MB"</code></td>
+<td>10485760</td>
+</tr>
+<tr>
+<td>Gigabytes</td>
+<td><code>"1GB"</code> or <code>"1 GB"</code></td>
+<td>1073741824</td>
+</tr>
+<tr>
+<td>Terabytes</td>
+<td><code>"1TB"</code> or <code>"1 TB"</code></td>
+<td>1099511627776</td>
+</tr>
+</tbody>
+</table>
+<h4 id="mime-type-wildcards">MIME Type Wildcards</h4>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Matches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"image/*"</code></td>
+<td>All image types (jpeg, png, gif, etc.)</td>
+</tr>
+<tr>
+<td><code>"text/*"</code></td>
+<td>All text types (plain, html, css, etc.)</td>
+</tr>
+<tr>
+<td><code>"application/*"</code></td>
+<td>All application types</td>
+</tr>
+<tr>
+<td><code>"image/jpeg"</code></td>
+<td>Specific MIME type only</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="imagevalidator">ImageValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.validators.image_validator</code></p>
+<p>Specialized validator for image files with format, dimensions, and aspect ratio validation.</p>
+<h4 id="parameters_2">Parameters</h4>
+<p>Inherits all FileValidator parameters plus:</p>
+<ul>
+<li><strong>allowed_formats</strong> (Optional[List[str]], default: None): Allowed image formats (e.g., ["JPEG", "PNG"])</li>
+<li><strong>min_resolution</strong> (Optional[Tuple[int, int]], default: None): Minimum image resolution (width, height)</li>
+<li><strong>max_resolution</strong> (Optional[Tuple[int, int]], default: None): Maximum image resolution (width, height)</li>
+<li><strong>aspect_ratios</strong> (Optional[List[str]], default: None): Allowed aspect ratios (e.g., ["1:1", "16:9"])</li>
+<li><strong>on_format_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom error for format</li>
+<li><strong>on_dimension_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom error for dimensions</li>
+<li><strong>on_aspect_ratio_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom error for aspect ratio</li>
+</ul>
+<h4 id="supported-formats">Supported Formats</h4>
+<ul>
+<li>JPEG / JPG</li>
+<li>PNG</li>
+<li>GIF</li>
+<li>WebP</li>
+<li>BMP</li>
+<li>TIFF</li>
+</ul>
+<hr />
+<h3 id="csvvalidator">CSVValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.validators.csv_validator</code></p>
+<p>Specialized validator for CSV files with schema, encoding, and row count validation.</p>
+<p><strong>Requirements</strong>: Install with <code>pip install fastapi-assets[pandas]</code></p>
+<h4 id="parameters_3">Parameters</h4>
+<p>Inherits all FileValidator parameters plus:</p>
+<ul>
+<li><strong>encoding</strong> (Optional[Union[str, List[str]]], default: None): Allowed encoding(s) for CSV</li>
+<li><strong>delimiter</strong> (Optional[str], default: None): CSV delimiter character</li>
+<li><strong>required_columns</strong> (Optional[List[str]], default: None): Columns that must exist</li>
+<li><strong>disallowed_columns</strong> (Optional[List[str]], default: None): Columns that must not exist</li>
+<li><strong>min_rows</strong> (Optional[int], default: None): Minimum number of data rows</li>
+<li><strong>max_rows</strong> (Optional[int], default: None): Maximum number of data rows</li>
+<li><strong>header_check_only</strong> (bool, default: False): Only validate headers without checking all rows</li>
+<li><strong>on_encoding_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom encoding error</li>
+<li><strong>on_columns_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom columns error</li>
+<li><strong>on_rows_error_detail</strong> (Optional[Union[str, Callable]], default: None): Custom rows error</li>
+</ul>
+<hr />
+<h2 id="request-validators">Request Validators</h2>
+<h3 id="queryvalidator">QueryValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.request_validators.query_validator</code></p>
+<p>Validator for FastAPI query parameters with support for allowed values and constraints.</p>
+<h4 id="parameters_4">Parameters</h4>
+<ul>
+<li><strong>param_name</strong> (str): Name of the query parameter</li>
+<li><strong>_type</strong> (type, default: str): Parameter type (int, str, float, bool, etc.)</li>
+<li><strong>default</strong> (Optional[Any], default: None): Default value if parameter is missing</li>
+<li><strong>allowed_values</strong> (Optional[List[Any]], default: None): List of allowed values</li>
+<li><strong>pattern</strong> (Optional[str], default: None): Regex pattern for string validation</li>
+<li><strong>ge</strong> (Optional[Union[int, float]], default: None): Greater than or equal to</li>
+<li><strong>le</strong> (Optional[Union[int, float]], default: None): Less than or equal to</li>
+<li><strong>gt</strong> (Optional[Union[int, float]], default: None): Greater than</li>
+<li><strong>lt</strong> (Optional[Union[int, float]], default: None): Less than</li>
+<li><strong>error_detail</strong> (Union[str, Callable], default: "Validation failed"): Error message</li>
+<li><strong>status_code</strong> (int, default: 400): HTTP status code on validation failure</li>
+</ul>
+<hr />
+<h3 id="headervalidator">HeaderValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.request_validators.header_validator</code></p>
+<p>Comprehensive validator for HTTP headers with pattern matching, format validation, allowed values, and custom validators. Extends FastAPI's <code>Header</code> dependency with granular error control.</p>
+<h4 id="class-definition_2">Class Definition</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">HeaderValidator</span><span class="p">(</span><span class="n">BaseValidator</span><span class="p">):</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="sd">    A dependency for validating HTTP headers with extended rules.</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="sd">    Provides pattern matching, format validation, allowed values,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="sd">    and custom validators with fine-grained error messages.</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div>
+<h4 id="parameters_5">Parameters</h4>
+<ul>
+<li><strong>default</strong> (Any, default: Undefined): Default value if header is missing. If not provided, header is required.</li>
+<li><strong>alias</strong> (Optional[str], default: None): The actual header name to extract (e.g., "X-API-Key", "Authorization")</li>
+<li><strong>convert_underscores</strong> (bool, default: True): If True, underscores in parameter name convert to hyphens in header name</li>
+<li><strong>pattern</strong> (Optional[str], default: None): Regex pattern that header value must match (cannot be used with <code>format</code>)</li>
+<li><strong>format</strong> (Optional[str], default: None): Predefined format name for validation</li>
+<li><strong>allowed_values</strong> (Optional[List[str]], default: None): List of exact string values allowed for the header</li>
+<li><strong>validators</strong> (Optional[List[Callable]], default: None): List of custom validation functions (sync or async)</li>
+<li><strong>title</strong> (Optional[str], default: None): Title for the header in OpenAPI documentation</li>
+<li><strong>description</strong> (Optional[str], default: None): Description for the header in OpenAPI documentation</li>
+<li><strong>on_required_error_detail</strong> (str, default: "Required header is missing."): Error message if header is missing</li>
+<li><strong>on_pattern_error_detail</strong> (str, default: "Header has an invalid format."): Error message if pattern/format fails</li>
+<li><strong>on_allowed_values_error_detail</strong> (str, default: "Header value is not allowed."): Error message if value not in allowed list</li>
+<li><strong>on_custom_validator_error_detail</strong> (str, default: "Header failed custom validation."): Error message if custom validator fails</li>
+<li><strong>status_code</strong> (int, default: 400): HTTP status code for validation errors</li>
+<li><strong>error_detail</strong> (str, default: "Header Validation Failed"): Generic fallback error message</li>
+</ul>
+<hr />
+<h3 id="cookievalidator">CookieValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.request_validators.cookie_validator</code></p>
+<p>Validator for cookie values with pattern matching and constraints.</p>
+<h4 id="parameters_6">Parameters</h4>
+<ul>
+<li><strong>alias</strong> (str): Name of the cookie to validate</li>
+<li><strong>pattern</strong> (Optional[str], default: None): Regex pattern for cookie value</li>
+<li><strong>error_detail</strong> (Union[str, Callable], default: "Validation failed"): Error message</li>
+<li><strong>status_code</strong> (int, default: 400): HTTP status code on validation failure</li>
+</ul>
+<hr />
+<h3 id="pathvalidator">PathValidator</h3>
+<p><strong>Module</strong>: <code>fastapi_assets.request_validators.path_validator</code></p>
+<p>Validator for path parameters with type conversion and pattern matching.</p>
+<h4 id="parameters_7">Parameters</h4>
+<ul>
+<li><strong>param_name</strong> (str): Name of the path parameter</li>
+<li><strong>_type</strong> (type, default: str): Parameter type</li>
+<li><strong>pattern</strong> (Optional[str], default: None): Regex pattern for validation</li>
+<li><strong>error_detail</strong> (Union[str, Callable], default: "Validation failed"): Error message</li>
+<li><strong>status_code</strong> (int, default: 400): HTTP status code on validation failure</li>
+</ul>
+<hr />
+<h2 id="exceptions">Exceptions</h2>
+<h3 id="validationerror_1">ValidationError</h3>
+<p>The <code>ValidationError</code> exception is raised when a validation check fails. It provides details about the nature of the validation failure, allowing developers to handle errors gracefully in their applications.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
