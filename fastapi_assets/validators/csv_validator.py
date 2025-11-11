@@ -25,7 +25,7 @@ class CSVValidator(FileValidator):
     CSV-specific checks for encoding, delimiter, columns, and row counts.
 
     This validator requires the 'pandas' library. Install it with:
-    `pip install fastapi-asserts[csv]`
+    `pip install fastapi-asserts[pandas]`
 
     .. code-block:: python
         from fastapi import FastAPI, UploadFile, Depends
@@ -95,7 +95,7 @@ class CSVValidator(FileValidator):
         if not pd:
             raise ImportError(
                 "The 'pandas' library is required for CSVValidator. "
-                "Install it with 'pip install fastapi-assets[csv]'"
+                "Install it with 'pip install fastapi-assets[pandas]'"
             )
 
         kwargs["content_types"] = kwargs.get("content_types", self._DEFAULT_CSV_CONTENT_TYPES)
