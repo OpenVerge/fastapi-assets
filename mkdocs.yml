@@ -22,6 +22,9 @@ nav:
   - Getting Started: getting-started.md
   - API Reference: api-reference.md
   - Examples: examples.md
+  - Contributing: CONTRIBUTING.md
+  - Code of Conduct: CODE_OF_CONDUCT.md
+  - Custom Validators: custom_validators.md
 
 # Extensions and plugins
 markdown_extensions:
