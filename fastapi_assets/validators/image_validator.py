@@ -2,7 +2,9 @@
 Module providing the ImageValidator for validating uploaded image files.
 """
 
-from typing import Any, Callable, List, Optional, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Union
 from fastapi_assets.core import ValidationError
 from fastapi import File, UploadFile
 from starlette.datastructures import UploadFile as StarletteUploadFile
@@ -209,7 +211,7 @@ class ImageValidator(FileValidator):
         self._validate_resolution(img)
         self._validate_aspect_ratio(img)
 
-    def _validate_format(self, img: Image.Image) -> None:
+    def _validate_format(self, img: Any) -> None:
         """
         Validates that the image format is in the allowed list.
 
@@ -234,7 +236,7 @@ class ImageValidator(FileValidator):
             # 415 Unsupported Media Type
             raise ValidationError(detail=str(detail), status_code=415)
 
-    def _validate_resolution(self, img: Image.Image) -> None:
+    def _validate_resolution(self, img: Any) -> None:
         """
         Validates the image's resolution against min, max, and exact constraints.
 
@@ -278,7 +280,7 @@ class ImageValidator(FileValidator):
             detail = self._resolution_error_detail or err_msg
             raise ValidationError(detail=str(detail), status_code=400)
 
-    def _validate_aspect_ratio(self, img: Image.Image) -> None:
+    def _validate_aspect_ratio(self, img: Any) -> None:
         """
         Validates that the image's aspect ratio is in the allowed list.
 
