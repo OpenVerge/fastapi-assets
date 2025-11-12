@@ -106,8 +106,8 @@ fastapi-assets/
 
 ## Requirements
 
-- Python 3.12+
-- FastAPI 0.119.1+
+- Python 3.10+
+- FastAPI 0.115.0+
 
 ## Optional Dependencies
 

@@ -15,8 +15,8 @@ Welcome to FastAPI Assets! This comprehensive guide will help you install, confi
 
 ### Requirements
 
-- Python 3.12 or higher
-- FastAPI 0.119.1 or higher
+- Python 3.10 or higher
+- FastAPI 0.115.0 or higher
 
 ### Basic Installation
 

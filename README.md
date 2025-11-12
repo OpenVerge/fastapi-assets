@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Python Version](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.119.1%2B-green.svg)](https://fastapi.tiangolo.com)
+[![Python Versions](https://img.shields.io/badge/python-3.10%20--%203.14-blue)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.0%2B-green.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 [![Code Style](https://img.shields.io/badge/Code%20Style-Ruff-black.svg)](https://github.com/astral-sh/ruff)
 

@@ -1,0 +1,30 @@
+include README.md
+include LICENSE.txt
+include pyproject.toml
+
+# Exclude common directories and files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.egg-info
+global-exclude __pycache__
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .ruff_cache
+global-exclude .tox
+global-exclude .venv
+global-exclude .vscode
+global-exclude .github
+global-exclude .git
+global-exclude .gitignore
+global-exclude *.egg
+
+# Exclude directories entirely
+prune build
+prune dist
+prune dump
+prune docs
+prune tests
+prune site
+
+# Include only site HTML for documentation (optional)
+recursive-include site *.html
